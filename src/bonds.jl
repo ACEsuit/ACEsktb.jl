@@ -3,10 +3,11 @@ module Bonds
 
 
 using ACE, JuLIP, NeighbourLists
+using LinearAlgebra: norm, dot
 
 import JuLIP: cutoff, write_dict, read_dict, evaluate!
-import JuLIP.Potentials: zlist, z2i, alloc_temp
-import ACE: get_basis_spec, fltype, rfltype, OneParticleBasis
+import JuLIP.Potentials: zlist, z2i, alloc_temp, numz, z2i, i2z
+import ACE: get_basis_spec, fltype, rfltype, OneParticleBasis, add_into_A!
 import Base: ==, length
 
 
@@ -53,7 +54,7 @@ fcut(cut::BondCutoff, R) = (norm(R) - cut.rcut)^cut.pcut
 function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
    zeff = r/2 + cut.zenv
-   return (z^2 - zeff^2)^cut.p * (r^2 - p.renv^2)^cut.p
+   return (z^2 - zeff^2)^cut.pcut * (r^2 - cut.renv^2)^cut.pcut
 end
 
 function _get_zr(R, R0)
@@ -102,7 +103,7 @@ Bond1pBasis(ace::OneParticleBasis{T}, fcut) where {T} =
 
 zlist(basis::Bond1pBasis) = zlist(basis.ace)
 cutoff(basis::Bond1pBasis) = cutoff(basis.ace)
-length(basis::Bond1pBasis, args...) = length(basis.ace.spec, args...)
+length(basis::Bond1pBasis, args...) = length(basis.ace, args...)
 get_basis_spec(basis::Bond1pBasis, args...) = get_basis_spec(basis.ace, args...)
 
 ==(P1::Bond1pBasis, P2::Bond1pBasis) = (P1.ace == P2.ace) && (P1.fenv == P2.fenv)
@@ -122,9 +123,13 @@ read_dict(::Val{:ACEtb_Bond1pBasis}, D::Dict) =
 fltype(basis::Bond1pBasis) = fltype(basis.ace)
 rfltype(basis::Bond1pBasis) = rfltype(basis.ace)
 
+maxlength(basis::Bond1pBasis) =
+      maximum( length(basis, iz1, iz2)
+               for (iz1, iz2) in Base.Iterators.product(1:numz(basis), 1:numz(basis)) )
+
 alloc_temp(basis::Bond1pBasis, args...) =
    (
-      Ptmp = zeros(fltype(basis), length(basis)),
+      Ptmp = zeros(fltype(basis), maxlength(basis)),
       tmpace = alloc_temp(basis.ace, args...)
    )
 
@@ -139,10 +144,10 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
    # center-bond
    @assert Zs[1] == 0
    fill!(P, 0)
-   iz = z2i(basis, 0)
+   iz = z2i(basis, AtomicNumber(0))
    add_into_A!(P, tmp.tmpace, basis.ace, Rbond, iz, iz0)
    fc = fcut(basis.fcut, Rbond)
-   Av = (@view A[basis.Aindices[iz, iz0]])
+   Av = (@view A[basis.ace.Aindices[iz, iz0]])
    @. Av[:] = fc * P
 
    # environment
@@ -150,11 +155,11 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
       iz = z2i(basis, Z)
       fill!(P, 0)
       add_into_A!(P, tmp.tmpace, basis.ace, R, iz, iz0)
-      Av = (@view A[basis.Aindices[iz, iz0]])
-      fenv = fenv(basis.fcut, R, Rbond)
-      @. Av[:] += fenv * P
+      Av = (@view A[basis.ace.Aindices[iz, iz0]])
+      fenv_ = fenv(basis.fcut, R, Rbond)
+      @. Av[:] += fenv_ * P
    end
-   return Av
+   return A
 end
 
 
