@@ -49,19 +49,21 @@ BondCutoff(; r0 = nothing, pcut = 2,
              rcut = 3 * r0, renv = 2 * r0,  zenv = 2 * r0) =
    BondCutoff(pcut, rcut, renv, zenv)
 
-fcut(cut::BondCutoff, R) = (norm(R) - cut.rcut)^cut.pcut
+# cutoff for the bond
+fcut(cut::BondCutoff, R) = (norm(R) - cut.rcut)^cut.pcut*(norm(R)<=cut.rcut)
 
 function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
    zeff = r/2 + cut.zenv
-   return (z^2 - zeff^2)^cut.pcut * (r^2 - cut.renv^2)^cut.pcut
+   return (z^2 - zeff^2)^cut.pcut *(abs.(z)<=zeff)*(r^2 - cut.renv^2)^cut.pcut * (r<=cut.renv)
 end
 
 function _get_zr(R, R0)
    R̂0 = R0/norm(R0)
    o = R0/2
    z = dot(R - o, R̂0)
-   r = norm(R - z * R̂0)
+   # r = norm(R - z * R̂0)
+   r = norm(R-o)
    return z, r
 end
 
@@ -139,6 +141,7 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
    Rbond = Rs[1]
    fill!(A, 0)
    iz0 = z2i(basis, z0)
+   # Should this be replaced by iz0 = z2i(basis, Zs[1]) ?
    P = tmp.Ptmp
 
    # center-bond

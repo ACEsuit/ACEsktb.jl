@@ -9,6 +9,11 @@ B = ACE.Utils.rpi_basis( species = [:X, :Al], N = 4,
 Rs, Zs, z0 = ACE.Random.rand_nhd(10, B.pibasis.basis1p.J, :Al)
 Zs[1] = 0
 
+rcut = 3.
+rcut_env = 6.
+zcut_env = 3.
+
+
 function fcut_env(r, z, rcut, zcut)
    return (r - rcut)^2 * (z - zcut)^2
 end
@@ -18,14 +23,14 @@ function fcut_bond(r, rcut)
 end
 
 function envelope(Rs, rcut, rcut_env, zcut_env)
-   fenv = fcut_bond(norm(Rs[1]))
+   fenv = fcut_bond(norm(Rs[1]), rcut)
    r̂ = Rs[1] / norm(Rs[1])
    o = Rs[1]/2
    for i = 2:length(Rs)
       R = Rs[i]
       z = dot(R - o, r̂)
       r = norm(R - z * r̂)
-      fenv *= fcut_env(r, z, rcut, zcut)
+      fenv *= fcut_env(r, z, rcut_env, zcut_env)
    end
    return fenv
 end
