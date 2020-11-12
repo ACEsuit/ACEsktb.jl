@@ -27,15 +27,19 @@ end
 
 # to create a basis with cylindrical symmetry start with a
 # standard ACE basis
+r0 = rnn(:Al)
 B = ACE.Utils.ace_basis( species = [:X, :Al], N = 1,
                          pin = 0, pcut = 0)
 
 # define the cylindrical cut-off function
 # Fcut = ACEtb.Bonds.BondCutoff(r0 = rnn(:Al))
-Fcut = ACEtb.Bonds.BondCutoff(r0 = nothing, rcut = 5., renv = 3., zenv=2., pcut = 2)
+Fcut = ACEtb.Bonds.BondCutoff(r0 = nothing, rcut = 2.5*r0, renv = 1.9*r0, zenv=1.9*r0, pcut = 2)
 
 # convert the radial ACE basis into a cylindrical ACE basis.
 Bbonds = ACEtb.Bonds.RPIBonds(B, Fcut)
+
+#---
+
 
 
 #---
@@ -50,28 +54,39 @@ for ntest = 1:10
    @show b1 ≈ b0
 end
 
+#---
 # Plotting bond basis values
-x = []
-y = []
-v = []
-for ntest = 1:1000
-   Rs, Zs, z0 = ACE.Random.rand_nhd(2, B.pibasis.basis1p.J, :Al)
-   # z0 = AtomicNumber(:X)
-   a = Rs[2][1]
-   b = Rs[2][2]
-   Rs[2] = SVector([a b 0.]...)
-   Rs[1] = SVector([1. 0. 0.]...)
-   Zs[1] = 0
+xgr = range(-2*r0, 3*r0, length = 40)
+ygr = range(-2*r0, 2*r0, length = 40)
+R0 = SVector([r0, 0.0, 0.0]...)
+Zs = AtomicNumber.([:X, :Al])
+z0 = AtomicNumber(:X)
+X = []
+Y = []
+V = []
+
+for x in xgr, y in ygr
+   R1 = SVector([x, y, 0.0]...)
+   # if norm(R1) < 0.5*r0 || norm(R1 - R0) < 0.5*r0
+   #    continue
+   # end
+   Rs = [R0, R1]
    b0 = eval_bond(Bbonds, Rs, Zs, z0)
-   push!(v,b0)
-   push!(x,a)
-   push!(y,b)
+   # b0 = evaluate(Bbonds, Rs, Zs, z0)
+   push!(V,b0)
+   push!(X,x)
+   push!(Y,y)
 end
 
-v
-vplot = [v[k][25] for k in 1:length(v)]
+vplot = [V[k][12] for k in 1:length(V)]
 using Plots
-scatter(x,y, marker_z = vplot, color = :jet)
+scatter(X,Y, marker_z = vplot, color = :jet, clims = (-0.7, 0.7))
+plot!([0.0, r0], [0.0, 0.0], lw=4, m=:o, ms=6, c=:red, label = "")
 
-minimum(abs.(vplot))
-maximum(abs.(vplot))
+# #---
+# minimum(abs.(vplot))
+# maximum(abs.(vplot))
+# extrema(vplot)
+#
+# v[1]
+# # display([ v[1] v[2] ][1:16,:])

@@ -55,15 +55,16 @@ fcut(cut::BondCutoff, R) = (norm(R) - cut.rcut)^cut.pcut*(norm(R)<=cut.rcut)
 function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
    zeff = r/2 + cut.zenv
-   return (z^2 - zeff^2)^cut.pcut *(abs.(z)<=zeff)*(r^2 - cut.renv^2)^cut.pcut * (r<=cut.renv)
+   return ((z/zeff)^2 - 1)^cut.pcut * (abs.(z)<=zeff) *
+          ((r/cut.renv)^2 - 1)^cut.pcut * (r<=cut.renv)
 end
 
 function _get_zr(R, R0)
    R̂0 = R0/norm(R0)
    o = R0/2
    z = dot(R - o, R̂0)
-   # r = norm(R - z * R̂0)
-   r = norm(R-o)
+   r = norm(R - o - z * R̂0)
+   # r = norm(R-o)
    return z, r
 end
 
@@ -161,6 +162,7 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
       Av = (@view A[basis.ace.Aindices[iz, iz0]])
       fenv_ = fenv(basis.fcut, R, Rbond)
       @. Av[:] += fenv_ * P
+      # @. Av[:] += P
    end
    return A
 end
