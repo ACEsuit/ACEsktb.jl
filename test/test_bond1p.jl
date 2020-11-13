@@ -78,15 +78,14 @@ for x in xgr, y in ygr
    push!(Y,y)
 end
 
-vplot = [V[k][12] for k in 1:length(V)]
+vplot = [V[k][9] for k in 1:length(V)]
 using Plots
 scatter(X,Y, marker_z = vplot, color = :jet, clims = (-0.7, 0.7))
 plot!([0.0, r0], [0.0, 0.0], lw=4, m=:o, ms=6, c=:red, label = "")
-
 # #---
 # minimum(abs.(vplot))
 # maximum(abs.(vplot))
-# extrema(vplot)
+@show [extrema([V[k][i] for k in 1:length(V)]) for i = 1:32]
 #
 # v[1]
-# # display([ v[1] v[2] ][1:16,:])
+# display([ v[1] v[2] ][1:16,:])

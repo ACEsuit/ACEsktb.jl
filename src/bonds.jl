@@ -50,11 +50,12 @@ BondCutoff(; r0 = nothing, pcut = 2,
    BondCutoff(pcut, rcut, renv, zenv)
 
 # cutoff for the bond
-fcut(cut::BondCutoff, R) = (norm(R) - cut.rcut)^cut.pcut*(norm(R)<=cut.rcut)
+fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
 
 function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
-   zeff = r/2 + cut.zenv
+   # zeff = r/2 + cut.zenv
+   zeff = norm(R0)/2 + cut.zenv
    return ((z/zeff)^2 - 1)^cut.pcut * (abs.(z)<=zeff) *
           ((r/cut.renv)^2 - 1)^cut.pcut * (r<=cut.renv)
 end
