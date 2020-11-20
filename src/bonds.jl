@@ -5,6 +5,9 @@ module Bonds
 using ACE, JuLIP, NeighbourLists
 using LinearAlgebra: norm, dot
 
+using JuLIP.Potentials: neigsz!
+
+
 import JuLIP: cutoff, write_dict, read_dict, evaluate!
 import JuLIP.Potentials: zlist, z2i, alloc_temp, numz, z2i, i2z
 import ACE: get_basis_spec, fltype, rfltype, OneParticleBasis, add_into_A!
@@ -67,6 +70,29 @@ function _get_zr(R, R0)
    r = norm(R - o - z * R̂0)
    # r = norm(R-o)
    return z, r
+end
+
+function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
+   Renv = []
+   # condition on the bond length
+   if norm(R0) <= cut.rcut
+      if nlist == nothing
+         rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
+         nlist = neighbourlist(at, rmax)
+      end
+      maxR = maxneigs(nlist)
+      tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(AtomicNumber, maxR))
+      j, Rt, Z = neigsz!(tmpRZ, nlist, at, i)
+      for R in Rt
+         if R != R0
+            z, r = _get_zr(R, R0)
+            if (z<= cut.zenv)&&(r<=cut.renv)
+               push!(Renv,R)
+            end
+         end
+      end
+   end
+   return Renv
 end
 
 
