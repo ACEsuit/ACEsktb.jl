@@ -6,7 +6,7 @@ using ACE, JuLIP, NeighbourLists
 using LinearAlgebra: norm, dot
 
 using JuLIP.Potentials: neigsz!
-
+using JuLIP: evaluate
 
 import JuLIP: cutoff, write_dict, read_dict, evaluate!
 import JuLIP.Potentials: zlist, z2i, alloc_temp, numz, z2i, i2z
@@ -84,7 +84,7 @@ function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) 
       tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(AtomicNumber, maxR))
       j, Rt, Z = neigsz!(tmpRZ, nlist, at, i)
       for R in Rt
-         if R != R0
+         if norm(R-R0) > 1e-10
             z, r = _get_zr(R, R0)
             if (z<= cut.zenv)&&(r<=cut.renv)
                push!(Renv,R)
@@ -93,6 +93,35 @@ function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) 
       end
    end
    return Renv
+end
+
+function eval_bond(B, Rs, Zs, z0)
+   r̂ = Rs[1] / norm(Rs[1])
+   o = Rs[1]/2
+   Rr = map( r_ -> (r = r_ - o; o + r - 2*dot(r,r̂)*r̂), Rs )
+   Rr[1] = Rs[1]
+   return evaluate(B, Rs, Zs, z0) + evaluate(B, Rr, Zs, z0)
+end
+
+function get_basis(order, degree, Fcut)
+    # Create a basis with cylindrical symmetry start with a
+    # standard ACE basis
+    if order == 0
+        B = ACE.Utils.ace_basis( species = [:X, :Al], N = 1,
+                                 pin = 0, pcut = 0, maxdeg = degree)
+
+    else
+        B = ACE.Utils.ace_basis( species = [:X, :Al], N = order,
+                                 pin = 0, pcut = 0, maxdeg = degree)
+    end
+    # convert the radial ACE basis into a cylindrical ACE basis.
+    Bbonds = RPIBonds(B, Fcut)
+    if order == 0
+        basis_index = collect(1:Int(length(Bbonds)/4))
+    else
+        basis_index = collect(1:Int(length(Bbonds)/2))
+    end
+    return Bbonds, basis_index
 end
 
 
