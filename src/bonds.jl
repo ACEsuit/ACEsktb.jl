@@ -120,7 +120,8 @@ function get_basis(order, degree, Fcut; Deg = nothing)
     # convert the radial ACE basis into a cylindrical ACE basis.
     Bbonds = RPIBonds(B, Fcut)
     iX = z2i(B, AtomicNumber(:X))
-    b_index = B.pibasis.inner[iX].AAindices
+    # b_index = B.pibasis.inner[iX].AAindices
+    b_index = B.Bz0inds[1]
     return Bbonds, b_index
 end
 
