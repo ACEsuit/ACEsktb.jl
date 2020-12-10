@@ -12,6 +12,7 @@ import JuLIP: cutoff, write_dict, read_dict, evaluate!
 import JuLIP.Potentials: zlist, z2i, alloc_temp, numz, z2i, i2z
 import ACE: get_basis_spec, fltype, rfltype, OneParticleBasis, add_into_A!
 import Base: ==, length
+using ACE: z2i, i2z
 
 
 # ------------------------------------------------------
@@ -112,27 +113,15 @@ function get_basis(order, degree, Fcut; Deg = nothing)
        Dd = Dict( "default" => 1.,)
        Deg = ACE.RPI.SparsePSHDegreeM(Dn, Dl, Dd)
     end
-    if order == 0
-        B = ACE.Utils.ace_basis( species = [:X, :Al], N = 1,
+    B = ACE.Utils.ace_basis( species = [:X, :Al], N = order,
                                  pin = 0, pcut = 0,
                                  maxdeg = degree,
                                  D = Deg)
-
-    else
-        B = ACE.Utils.ace_basis( species = [:X, :Al], N = order,
-                                 pin = 0, pcut = 0,
-                                 maxdeg = degree,
-                                 D = Deg)
-    end
     # convert the radial ACE basis into a cylindrical ACE basis.
     Bbonds = RPIBonds(B, Fcut)
-    # if order == 0
-    #     basis_index = collect(1:Int(length(Bbonds)/4))
-    # else
-    #     basis_index = collect(1:Int(length(Bbonds)/2))
-    # end
-    return Bbonds
-    # , basis_index
+    iX = z2i(B, AtomicNumber(:X))
+    b_index = B.pibasis.inner[iX].AAindices
+    return Bbonds, b_index
 end
 
 
