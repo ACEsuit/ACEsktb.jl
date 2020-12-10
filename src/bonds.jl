@@ -103,25 +103,36 @@ function eval_bond(B, Rs, Zs, z0)
    return evaluate(B, Rs, Zs, z0) + evaluate(B, Rr, Zs, z0)
 end
 
-function get_basis(order, degree, Fcut)
+function get_basis(order, degree, Fcut; Deg = nothing)
     # Create a basis with cylindrical symmetry start with a
     # standard ACE basis
+    if Deg == nothing
+       Dn = Dict( "default" => 1.,)
+       Dl = Dict( "default" => 1.,)
+       Dd = Dict( "default" => 1.,)
+       Deg = ACE.RPI.SparsePSHDegreeM(Dn, Dl, Dd)
+    end
     if order == 0
         B = ACE.Utils.ace_basis( species = [:X, :Al], N = 1,
-                                 pin = 0, pcut = 0, maxdeg = degree)
+                                 pin = 0, pcut = 0,
+                                 maxdeg = degree,
+                                 D = Deg)
 
     else
         B = ACE.Utils.ace_basis( species = [:X, :Al], N = order,
-                                 pin = 0, pcut = 0, maxdeg = degree)
+                                 pin = 0, pcut = 0,
+                                 maxdeg = degree,
+                                 D = Deg)
     end
     # convert the radial ACE basis into a cylindrical ACE basis.
     Bbonds = RPIBonds(B, Fcut)
-    if order == 0
-        basis_index = collect(1:Int(length(Bbonds)/4))
-    else
-        basis_index = collect(1:Int(length(Bbonds)/2))
-    end
-    return Bbonds, basis_index
+    # if order == 0
+    #     basis_index = collect(1:Int(length(Bbonds)/4))
+    # else
+    #     basis_index = collect(1:Int(length(Bbonds)/2))
+    # end
+    return Bbonds
+    # , basis_index
 end
 
 
