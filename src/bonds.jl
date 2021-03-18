@@ -134,7 +134,7 @@ write_dict(basis::BondCutoff) = Dict(
             "zenv" => basis.zenv )
 
 read_dict(::Val{:ACEtb_BondCutoff}, D::Dict) =
-   Bond1pBasis(D["pcut"], D["rcut"], D["renv"], D["zenv"])
+   BondCutoff(D["pcut"], D["rcut"], D["renv"], D["zenv"])
 
 
 # ------------ Main Object - Bond1pBasis
@@ -166,7 +166,7 @@ cutoff(basis::Bond1pBasis) = cutoff(basis.ace)
 length(basis::Bond1pBasis, args...) = length(basis.ace, args...)
 get_basis_spec(basis::Bond1pBasis, args...) = get_basis_spec(basis.ace, args...)
 
-==(P1::Bond1pBasis, P2::Bond1pBasis) = (P1.ace == P2.ace) && (P1.fenv == P2.fenv)
+==(P1::Bond1pBasis, P2::Bond1pBasis) = (P1.ace == P2.ace) && (P1.fcut == P2.fcut)
 
 write_dict(basis::Bond1pBasis) = Dict(
          "__id__" => "ACEtb_Bond1pBasis",
