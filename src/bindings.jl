@@ -8,7 +8,7 @@ using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
-using ACEtb.Utils: get_data, read_json
+using ACEtb.Utils: read_json
 using ACEtb.Predictions: predict
 using ACEtb.TBhelpers
 using ProgressMeter
@@ -29,7 +29,7 @@ model_onsite_vals = nothing
 function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; Bpredict=true, HH=nothing, SS=nothing, supercell_atoms=nothing, prt=0)
 
     if(prt == 1)
-       prgres = Progress(iend-istart+1, dt=0.25, desc="AITB : Calculating ... ",
+       prgres = Progress(iend-istart+1, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
                          barlen=20)
     end
@@ -158,7 +158,7 @@ function set_model(natoms, nspecies,
                    prnt,
                    stat_jl::Array{Int32})
     if(prnt == 1)
-        @info "AITB : Julia set_model function."
+        @info "┌── ACEtb : Julia set_model function."
     end
     try
         global acetb_dct["natoms"] = natoms
@@ -191,9 +191,12 @@ function set_model(natoms, nspecies,
         model_files = get_list_str(fnames, lfn, 200)
         global acetb_dct["model_files"] = model_files
 
+        if(prnt == 1)
+            @info "│    Reading acetb.json file..."
+        end
         filedata = read_json(model_files[1])
         if(prnt == 1)
-            println("read done.")
+            @info "│    Reading is done."
         end
         global acetb_dct["file_data"] = filedata
         trdata = filedata["training_datasets"]
@@ -207,28 +210,28 @@ function set_model(natoms, nspecies,
         end
         if Bpredict
             if(prnt == 1)
-                println("Fitting...")
+                @info "│    Fitting..."
             end
             Bint_table, cutf_func = predict(trdata, cutoff_params, fit_params)
             global Bondint_table = Bint_table
             global cutoff_func = cutf_func
             if(prnt == 1)
-                println("Done fitting.")
+                @info "│    Fitting is done."
             end
         else
             if(prnt == 1)
-                println("Setting Bonds table...")
+                @info "│    Setting bond integral table..."
             end
             HSfile = filedata["HS_datasets"][1]
             if(prnt == 1)
-                println("Reading file:", HSfile)
+                @info "│    Reading saved H,S file:", HSfile
             end
             HSdata = h5read_SK(HSfile; get_HS=true, get_atoms=true, get_metadata=true, get_energies=true)
             global saveh5_HH = permutedims(HSdata[2][1], [3, 2, 1])
             global saveh5_SS = permutedims(HSdata[2][2], [3, 2, 1])
             global saveh5_satoms = HSdata[6]
             if(prnt == 1)
-               println("Done.")
+               @info "│    Setting H,S is done."
             end
         end
         global onsite_vals = filedata["onsite-terms"]
@@ -243,7 +246,7 @@ function set_model(natoms, nspecies,
         end
     end
     if(prnt == 1)
-        @info "AITB : Done at Julia module."
+        @info "└── ACEtb : Done at Julia module."
     end
 end
 
@@ -259,7 +262,7 @@ function model_predict(iatf, iatl, natoms,
                        prnt,
                        stat_jl::Array{Int32})
     if(prnt == 1)
-        @info "AITB : Julia set_predict function."
+        @info "┌── ACEtb : Julia model_predict function."
     end
     try
         pos = reshape(coords,3,:) ./ bohr2ang
@@ -293,7 +296,7 @@ function model_predict(iatf, iatl, natoms,
         onsite_terms = [onsite_vals[elm_names[species[a]]] for a=1:natoms]
         norbe = acetb_dct["norbe"]
         if(prnt == 1)
-            println("AITB : Calculating bond integrals...")
+            @info "│    Calculating bond integrals..."
         end
         buildHS(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff; Bpredict=Bpredict, HH=saveh5_HH, SS=saveh5_SS, supercell_atoms=saveh5_satoms, prt=prnt)
         stat_jl[1] = 0
@@ -307,7 +310,7 @@ function model_predict(iatf, iatl, natoms,
         end
     end
     if(prnt == 1)
-        @info "Done at Julia module."
+        @info "└── ACEtb : Done at Julia module."
     end
 end
 

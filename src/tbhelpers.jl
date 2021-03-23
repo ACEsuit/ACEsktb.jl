@@ -1,5 +1,7 @@
 module TBhelpers
 
+using ACEtb.SlaterKoster
+
 export set_SK_orbitals, find_row_in_matrix, get_latvec_ids, get_R, get_tbcells, wrap_shift
 
 function set_SK_orbitals(ntypes,nshells,orblist)

@@ -8,7 +8,6 @@ using ACEtb.Utils: get_data
 export predict
 
 function predict(filenames, cutoff_params, fit_params)
-    @show filenames
     rcut = cutoff_params["rcut"]
     renv = cutoff_params["renv"]
     zenv = cutoff_params["zenv"]
@@ -16,7 +15,7 @@ function predict(filenames, cutoff_params, fit_params)
     degree = fit_params["degree"]
     order = fit_params["order"]
     cutfunc = BondCutoff(pcut, rcut, renv, zenv)
-    data_train = get_data(filenames, cutfunc)
+    data_train = get_data(filenames, cutfunc, get_env)
     BII = fit_BI(data_train, order, degree, cutfunc; test = nothing)
     return BII, cutfunc
 end

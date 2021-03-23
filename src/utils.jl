@@ -1,9 +1,10 @@
 module Utils
 
-import JuLIP: Atoms
+using StaticArrays
+import JuLIP
 import HDF5, JSON
 
-function get_data(filenames, cutfunc)
+function get_data(filenames, cutfunc, get_env)
     data = []
     for f in filenames
         SKdata = h5read_SK(f; get_HS=true, 
