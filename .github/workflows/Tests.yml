@@ -41,7 +41,7 @@ jobs:
     - run: |
         using InteractiveUtils; versioninfo()
         using Pkg
-        Pkg.pkg"add https://github.com/ACEsuit/ACE.jl.git"
+        Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
         Pkg.activate(".")
         Pkg.test("ACEtb")
       shell: bash -c "julia --color=yes --project {0}"
