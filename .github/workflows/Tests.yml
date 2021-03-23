@@ -42,6 +42,7 @@ jobs:
         using InteractiveUtils; versioninfo()
         using Pkg
         Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
+        Pkg.add("LowRankApprox")
         Pkg.activate(".")
         Pkg.test("ACEtb")
       shell: bash -c "julia --color=yes --project {0}"
