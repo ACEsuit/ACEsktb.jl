@@ -16,26 +16,32 @@ jobs:
   test:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        julia_version: ['1.3', '1.5']
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
     # Setup Julia environment
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -U numpy
+        pip install -U sympy
     - name: Setup Julia environment
       uses: julia-actions/setup-julia@latest
       with:
         # The Julia version to download (if necessary) and use.
-        version: 1.5
+        version: ${{ matrix.julia_version }}
         # Display InteractiveUtils.versioninfo() after installing
         show-versioninfo: true # optional, default is false
     - run: |
         using InteractiveUtils; versioninfo()
-        using Pkg
-        Pkg.activate(".")
-        Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
-        Pkg.add("ZipFile")
-        Pkg.add(url="https://github.com/ACEsuit/ACE.jl.git")
-        Pkg.add("JuLIP")
-        Pkg.test("ACEtb")
-      shell: bash
+        using Pkg; Pkg.activate("."); Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"; Pkg.add("ZipFile"); Pkg.add(url="https://github.com/ACEsuit/ACE.jl.git"); Pkg.add("JuLIP"); Pkg.test("ACEtb")
+      shell: bash -c "julia --color=yes --project {0}"
