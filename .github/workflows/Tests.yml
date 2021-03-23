@@ -43,5 +43,5 @@ jobs:
         show-versioninfo: true # optional, default is false
     - run: |
         using InteractiveUtils; versioninfo()
-        using Pkg; Pkg.activate("."); using Pkg; Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"; Pkg.add("ZipFile"); Pkg.add(url="https://github.com/ACEsuit/ACE.jl.git"); Pkg.add("JuLIP"); Pkg.test("ACEtb")
+        using Pkg; Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"; Pkg.add("ZipFile"); Pkg.add(url="https://github.com/ACEsuit/ACE.jl.git"); Pkg.add("JuLIP"); Pkg.activate("."); Pkg.test("ACEtb")
       shell: bash -c "julia --color=yes --project {0}"
