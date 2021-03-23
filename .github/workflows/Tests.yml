@@ -44,6 +44,5 @@ jobs:
         Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
         Pkg.add("LowRankApprox")
         Pkg.activate(".")
-        Pkg.add("LowRankApprox")
         Pkg.test("ACEtb")
-      shell: bash -c "julia --color=yes --project {0}"
+      shell: bash -c "julia --color=yes {0}"
