@@ -33,7 +33,7 @@ jobs:
         using InteractiveUtils; versioninfo()
         using Pkg
         Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
-        Pkg.add("https://github.com/ACEsuit/ACE.jl.git")
+        Pkg.add(url="https://github.com/ACEsuit/ACE.jl.git")
         Pkg.add("JuLIP")
         Pkg.activate(".")
         Pkg.test("ACEtb")
