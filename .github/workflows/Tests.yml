@@ -35,6 +35,7 @@ jobs:
         Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
         Pkg.add(url="https://github.com/ACEsuit/ACE.jl.git")
         Pkg.add("JuLIP")
+        Pkg.add("ZipFile")
         Pkg.activate(".")
         Pkg.test("ACEtb")
       shell: bash -c "julia --color=yes --project {0}"
