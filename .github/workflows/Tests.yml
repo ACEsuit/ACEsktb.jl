@@ -41,6 +41,7 @@ jobs:
     - run: |
         using InteractiveUtils; versioninfo()
         using Pkg
+        Pkg.pkg"update"
         Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
         Pkg.add("LowRankApprox")
         Pkg.activate(".")
