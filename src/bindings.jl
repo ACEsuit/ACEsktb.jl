@@ -250,7 +250,10 @@ function set_model(natoms, nspecies,
                 if(prnt == 1)
                     @info "│    Fitting..."
                 end
-                Bint_table, cutf_func = train_and_predict(trdata, cutoff_params, fit_params)
+                Bint_table, cutf_func, train_dict = train_and_predict(trdata, cutoff_params, fit_params)
+                if(prnt == 1)
+                    write_json(model_files[1], train_dict)
+                end
                 global Bondint_table = Bint_table
                 global cutoff_func = cutf_func
                 if(prnt == 1)

@@ -50,8 +50,7 @@ function train_and_predict(filenames, cutoff_params, fit_params)
     cutfunc = BondCutoff(pcut, rcut, renv, zenv)
     data_train = get_data(filenames, cutfunc, get_env)
     BII, train_dict = fit_BI(data_train, order, degree, env_deg, cutfunc; test = nothing)
-    write_json(filenames, train_dict)
-    return BII, cutfunc
+    return BII, cutfunc, train_dict
 end
 
 function predict(fname, cutoff_params, fit_params)
