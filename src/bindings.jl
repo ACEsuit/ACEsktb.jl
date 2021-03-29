@@ -26,38 +26,22 @@ saveh5_SS = nothing
 saveh5_satoms = nothing
 model_onsite_vals = nothing
 
-function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; Bpredict=true, HH=nothing, SS=nothing, supercell_atoms=nothing, prt=0)
+function buildHS_test(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff, HH, SS, supercell_atoms; prt=0)
 
-    if(prt == 1)
-       prgres = Progress(iend-istart+1, dt=0.25, desc="[ Info: |    Calculating ... ",
-                         barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
-                         barlen=20)
-    end
-
-    if Bpredict == false
-        invcell = inv(atoms.cell)
-        mesh = [9, 9, 9]
-        rcn = get_tbcells(supercell_atoms, invcell, mesh, 365)
-    end
+    invcell = inv(atoms.cell)
+    mesh = [9, 9, 9]
+    rcn = get_tbcells(supercell_atoms, invcell, mesh, 365)
 
     for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
        # Onsite blocks
        io = ipair[offset + ia] + 1
-       if Bpredict == false
-          nno = norbs[isp] * norbs[isp]
-          shift = convert(Array{Int64,1}, [0,0,0])
-          cid = find_row_in_matrix(shift, rcn)
-          H[io : io + nno - 1] = vcat(HH[cid,:,:]...)
-          S[io : io + nno - 1] = vcat(SS[cid,:,:]...)
-       else
-          for ib = 1:norbs[isp]
-             H[io] = onsite_terms[isp][ib]
-             S[io] = 1.0
-             io += norbs[isp] + 1
-          end
-       end
+       nno = norbs[isp] * norbs[isp]
+       shift = convert(Array{Int64,1}, [0,0,0])
+       cid = find_row_in_matrix(shift, rcn)
+       H[io : io + nno - 1] = vcat(HH[cid,:,:]...)
+       S[io : io + nno - 1] = vcat(SS[cid,:,:]...)
 
        # Offsite blocks
        for nj = 1:nnei[ia]
@@ -72,27 +56,66 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
              continue
           end
 
-          if Bpredict == false
-              shift = convert(Array{Int64,1}, round.(invcell * Rij'))
-              shift = wrap_shift(shift, mesh)
-              cid = find_row_in_matrix(shift, rcn)
-              H[ix : iy] = vcat(HH[cid,:,:]...)
-              S[ix : iy] = vcat(SS[cid,:,:]...)
-          else
-              # Predictions 
-              R0 = SVector(Rij...)
-              Renv = get_env(atoms, R0, ia, cutoff_func)
-              VV = Bondint_table(R0,Renv)
+          shift = convert(Array{Int64,1}, round.(invcell * Rij'))
+          shift = wrap_shift(shift, mesh)
+          cid = find_row_in_matrix(shift, rcn)
+          H[ix : iy] = vcat(HH[cid,:,:]...)
+          S[ix : iy] = vcat(SS[cid,:,:]...)
+       end
+       if(prt == 1)
+          next!(prgres)
+       end
+    end
+    if(prt == 1)
+       flush(stdout)
+    end
+end
 
-              # Set H and S
-              lnb = length(SKH_list[isp].bonds)
-              VH = VV[1:lnb]
-              E  = sk2cart(SKH_list[isp], Rij, VH, FHIaims=true)
-              H[ix : iy] = vcat(E...)
-              VS = VV[lnb+1:end]
-              ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
-              S[ix : iy] = vcat(ES...)
+function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; prt=0)
+
+    if(prt == 1)
+       prgres = Progress(iend-istart+1, dt=0.25, desc="[ Info: |    Calculating ... ",
+                         barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
+                         barlen=20)
+    end
+
+    for ia = istart:iend
+       isp = species[ia]
+       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
+       # Onsite blocks
+       io = ipair[offset + ia] + 1
+       for ib = 1:norbs[isp]
+          H[io] = onsite_terms[isp][ib]
+          S[io] = 1.0
+          io += norbs[isp] + 1
+       end
+
+       # Offsite blocks
+       Threads.@threads for nj = 1:nnei[ia]
+          jn = offset + ia + nj
+          ja = inei[jn]
+          jsp = species[ja]
+          ix = ipair[jn]
+          iy = ix + norbs[isp] * norbs[jsp]
+          ix += 1
+          Rij =  transpose(coords[:,ja] - coords[:,ia])
+          if cutoff < norm(Rij)
+             continue
           end
+
+          # Predictions 
+          R0 = SVector(Rij...)
+          Renv = get_env(atoms, R0, ia, cutoff_func)
+          VV = Bondint_table(R0,Renv)
+
+          # Set H and S
+          lnb = length(SKH_list[isp].bonds)
+          VH = VV[1:lnb]
+          E  = sk2cart(SKH_list[isp], Rij, VH, FHIaims=true)
+          H[ix : iy] = vcat(E...)
+          VS = VV[lnb+1:end]
+          ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
+          S[ix : iy] = vcat(ES...)
        end
        if(prt == 1)
           next!(prgres)
@@ -199,27 +222,54 @@ function set_model(natoms, nspecies,
             @info "│    Reading is done."
         end
         global acetb_dct["file_data"] = filedata
-        trdata = filedata["training_datasets"]
         cutoff_params = filedata["model"]["cutoff_params"]
         fit_params = filedata["model"]["fit_params"]
-        predict_params = filedata["model"]["predict"]
-        if predict_params == 0
-           Bpredict = false
-        else
-           Bpredict = true
+        Bpredict = true
+        Bfit = false
+        if haskey(filedata["model"], "predict")
+            predict_setting = filedata["model"]["predict"]
+            if predict_setting == 0
+                Bpredict = false
+            else
+                Bpredict = true
+            end
+            if haskey(filedata, "training_datasets")
+                trdata = filedata["training_datasets"]
+            end
+        end
+        if haskey(filedata["model"], "fit")
+            fit_setting = filedata["model"]["fit"]
+            if fit_setting == 0
+                Bfit = false
+            else
+                Bfit = true
+            end
         end
         if Bpredict
-            if(prnt == 1)
-                @info "│    Fitting..."
-            end
-            Bint_table, cutf_func = predict(trdata, cutoff_params, fit_params)
-            global Bondint_table = Bint_table
-            global cutoff_func = cutf_func
-            if(prnt == 1)
-                @info "│    Fitting is done."
+            if Bfit
+                if(prnt == 1)
+                    @info "│    Fitting..."
+                end
+                Bint_table, cutf_func = train_and_predict(trdata, cutoff_params, fit_params)
+                global Bondint_table = Bint_table
+                global cutoff_func = cutf_func
+                if(prnt == 1)
+                    @info "│    Fitting is done."
+                end
+            else
+                if(prnt == 1)
+                    @info "│    Loading model..."
+                end
+                Bint_table, cutf_func = predict(filedata, cutoff_params, fit_params)
+                global Bondint_table = Bint_table
+                global cutoff_func = cutf_func
+                if(prnt == 1)
+                    @info "│    Model is load."
+                end
             end
         else
             if(prnt == 1)
+                @info "│    This mode is test only. It will not use model predictions."
                 @info "│    Setting bond integral table..."
             end
             HSfile = filedata["HS_datasets"][1]
@@ -283,22 +333,21 @@ function model_predict(iatf, iatl, natoms,
                      pbc = [true, true, true])
 
         SKH_list = acetb_dct["SKH_list"]
-       
         model_files = acetb_dct["model_files"]
         filedata = acetb_dct["file_data"]
+
         predict_params = filedata["model"]["predict"]
-        if predict_params == 0
-           Bpredict = false
-        else
-           Bpredict = true
-        end
         onsite_vals = filedata["onsite-terms"]
         onsite_terms = [onsite_vals[elm_names[species[a]]] for a=1:natoms]
         norbe = acetb_dct["norbe"]
         if(prnt == 1)
             @info "│    Calculating bond integrals..."
         end
-        buildHS(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff; Bpredict=Bpredict, HH=saveh5_HH, SS=saveh5_SS, supercell_atoms=saveh5_satoms, prt=prnt)
+        if predict_params == 0
+           buildHS_test(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff, saveh5_HH, saveh5_SS, saveh5_satoms; prt=prnt)
+        else
+           buildHS(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff; prt=prnt)
+        end
         stat_jl[1] = 0
     catch
         stat_jl[1] = 1
