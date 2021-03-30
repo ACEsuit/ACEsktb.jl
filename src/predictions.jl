@@ -54,7 +54,7 @@ function train_and_predict(filenames, specie_syms, cutoff_params, fit_params)
     return BII, cutfunc, train_dict
 end
 
-function predict(fname, cutoff_params, fit_params)
+function predict(poten_dict, cutoff_params, fit_params)
     rcut = cutoff_params["rcut"]
     renv = cutoff_params["renv"]
     zenv = cutoff_params["zenv"]
@@ -63,22 +63,21 @@ function predict(fname, cutoff_params, fit_params)
     degree = fit_params["degree"]
     env_deg = fit_params["env_deg"]
     cutfunc = BondCutoff(pcut, rcut, renv, zenv)
-    BII = load_BI(fname; test = nothing)
+    BII = load_BI(train_dict; test = nothing)
     return BII, cutfunc
 end
 
-function load_BI(fname; test = nothing)
-   potential_data = read_json(fname)
-   basis_string = potential_data["basis_string"]
+function load_BI(poten_dict; test = nothing)
+   basis_string = poten_dict["basis_string"]
    basis = read_dict(basis_string)
-   b_index = potential_data["basis_index"]
+   b_index = poten_dict["basis_index"]
    c = potential_data["c"]
-   nbonds = potential_data["nbonds"]
-   specie_syms = potential_data["elm_names"]
+   nbonds = poten_dict["nbonds"]
+   specie_syms = poten_dict["elm_names"]
 
    function BIfunc(R0,Renv)
       Rs = [[R0]; Renv]
-      Zs = [[AtomicNumber(:X)];[AtomicNumber(:Al) for _ = 1:length(Renv)]]
+      Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
       z0 = AtomicNumber(:X)
       return [dot(c[:,i],eval_bond(basis, Rs, Zs, z0)[b_index]) for i in 1:nbonds]
    end
