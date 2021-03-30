@@ -63,7 +63,7 @@ function predict(poten_dict, cutoff_params, fit_params)
     degree = fit_params["degree"]
     env_deg = fit_params["env_deg"]
     cutfunc = BondCutoff(pcut, rcut, renv, zenv)
-    BII = load_BI(train_dict; test = nothing)
+    BII = load_BI(poten_dict; test = nothing)
     return BII, cutfunc
 end
 
