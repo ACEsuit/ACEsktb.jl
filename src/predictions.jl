@@ -96,7 +96,7 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
    y = zeros(ComplexF64, (length(train), nbonds))
    for (i, (R0, Renv, V)) in enumerate(train)
      Rs = [[R0]; Renv]
-     Zs = [[AtomicNumber(:X)];[AtomicNumber(specie_syms[1]) for _ = 1:length(Renv)]]
+     Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
      z0 = AtomicNumber(:X)
      A[i, :] = eval_bond(basis, Rs, Zs, z0)[b_index]
      y[i, :] = V
@@ -114,7 +114,7 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
    train_dict["basis"] = JSON.json(write_dict(basis))
    train_dict["basis_index"] = b_index
    train_dict["nbonds"] = nbonds
-   train_dict["elm_names"] = [ String(elm) for elm in specie_syms ]
+   train_dict["elm_names"] = specie_syms
    
    @info "│    set BI func."
    function BIfunc(R0,Renv)
