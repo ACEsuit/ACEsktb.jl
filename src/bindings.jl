@@ -220,6 +220,7 @@ function set_model(natoms, nspecies,
         filedata = read_json(model_files[1])
         if(MPIproc == 1)
             @info "│    Reading is done."
+            @info filedata
         end
         global acetb_dct["file_data"] = filedata
         cutoff_params = filedata["model"]["cutoff_params"]
