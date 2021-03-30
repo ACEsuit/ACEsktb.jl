@@ -32,7 +32,7 @@ function get_data(filenames, cutfunc, get_env)
 end
 
 function read_json(fname)
-  return JSON.parse(join(readlines(fname)))
+  return JSON.parse(join(read(fname)))
 end
 
 function write_json(fname, update_dict)
