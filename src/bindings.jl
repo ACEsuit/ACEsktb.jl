@@ -8,7 +8,7 @@ using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
-using ACEtb.Utils: read_json
+using ACEtb.Utils: read_json, write_json
 using ACEtb.Predictions: predict
 using ACEtb.TBhelpers
 using ProgressMeter
