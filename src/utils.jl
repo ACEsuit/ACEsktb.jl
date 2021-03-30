@@ -38,7 +38,7 @@ end
 function write_json(fname, update_dict)
   file_dict = JSON.parse(join(readlines(fname)))
   merge!(file_dict, update_dict)
-  open(fname) do f
+  open(fname, "w") do f
      write(f, JSON.json(file_dict))
   end
 end
