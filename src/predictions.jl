@@ -69,7 +69,7 @@ end
 
 function load_BI(poten_dict; test = nothing)
    basis_string = poten_dict["basis"]
-   basis = read_dict(basis_string)
+   basis = read_dict(JSON.parse(basis_string))
    b_index = poten_dict["basis_index"]
    c = potential_data["c"]
    nbonds = poten_dict["nbonds"]
