@@ -86,7 +86,9 @@ function load_BI(fname; test = nothing)
 end
 
 function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = nothing)
+   @info "│    setting degreeM."
    Deg = degreeM(degree,order;env_deg = env_deg) 
+   @info "│    setting basis and b_index."
    basis, b_index = get_basis(order, degree, cutfunc; Deg = Deg) 
    @info "│    basis functions set."
    nbonds = length(train[1][3])
