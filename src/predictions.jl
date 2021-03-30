@@ -74,7 +74,7 @@ function load_BI(fname; test = nothing)
    b_index = potential_data["basis_index"]
    c = potential_data["c"]
    nbonds = potential_data["nbonds"]
-   specie_syms = potential_data["elm_"]
+   specie_syms = potential_data["elm_names"]
 
    function BIfunc(R0,Renv)
       Rs = [[R0]; Renv]
@@ -89,7 +89,7 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
    @info "│    setting degreeM."
    Deg = degreeM(degree,order;env_deg = env_deg) 
    @info "│    setting basis and b_index."
-   basis, b_index = get_basis(order, degree, cutfunc; Deg = Deg) 
+   basis, b_index = get_basis(order, 1., cutfunc; Deg = Deg) 
    @info "│    basis functions set."
    nbonds = length(train[1][3])
    A = zeros(ComplexF64, (length(train), length(b_index)))
