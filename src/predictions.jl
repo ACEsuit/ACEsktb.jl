@@ -68,7 +68,7 @@ function predict(poten_dict, cutoff_params, fit_params)
 end
 
 function load_BI(poten_dict; test = nothing)
-   basis_string = poten_dict["basis_string"]
+   basis_string = poten_dict["basis"]
    basis = read_dict(basis_string)
    b_index = poten_dict["basis_index"]
    c = potential_data["c"]
