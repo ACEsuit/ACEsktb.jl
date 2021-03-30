@@ -7,8 +7,7 @@ using ACEtb.Utils: get_data, read_json, write_json
 using JSON
 using IterativeSolvers
 
-export degreeM, predict, train_and_predict
-
+export predict, train_and_predict
 
 # Define the dictionaries from the parameters
 function degreeM(deg,order;env_deg = deg)
@@ -39,7 +38,7 @@ function degreeM(deg,order;env_deg = deg)
   end
 end
 
-function train_and_predict(filenames, cutoff_params, fit_params)
+function train_and_predict(filenames, specie_syms, cutoff_params, fit_params)
     rcut = cutoff_params["rcut"]
     renv = cutoff_params["renv"]
     zenv = cutoff_params["zenv"]
@@ -48,8 +47,10 @@ function train_and_predict(filenames, cutoff_params, fit_params)
     order = fit_params["order"]
     env_deg = fit_params["env_deg"]
     cutfunc = BondCutoff(pcut, rcut, renv, zenv)
+    @info "│    Getting data..."
     data_train = get_data(filenames, cutfunc, get_env)
-    BII, train_dict = fit_BI(data_train, order, degree, env_deg, cutfunc; test = nothing)
+    @info "│    fitting BI..."
+    BII, train_dict = fit_BI(data_train, specie_syms, order, degree, env_deg, cutfunc; test = nothing)
     return BII, cutfunc, train_dict
 end
 
@@ -71,6 +72,9 @@ function load_BI(fname; test = nothing)
    basis_string = potential_data["basis_string"]
    basis = read_dict(basis_string)
    b_index = potential_data["basis_index"]
+   c = potential_data["c"]
+   nbonds = potential_data["nbonds"]
+   specie_syms = potential_data["elm_"]
 
    function BIfunc(R0,Renv)
       Rs = [[R0]; Renv]
@@ -81,21 +85,24 @@ function load_BI(fname; test = nothing)
    return BIfunc
 end
 
-function fit_BI(train, order, degree, env_deg, cutfunc; test = nothing)
+function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = nothing)
    Deg = degreeM(degree,order;env_deg = env_deg) 
    basis, b_index = get_basis(order, degree, cutfunc; Deg = Deg) 
+   @info "│    basis functions set."
    nbonds = length(train[1][3])
    A = zeros(ComplexF64, (length(train), length(b_index)))
    y = zeros(ComplexF64, (length(train), nbonds))
    for (i, (R0, Renv, V)) in enumerate(train)
      Rs = [[R0]; Renv]
-     Zs = [[AtomicNumber(:X)];[AtomicNumber(:Al) for _ = 1:length(Renv)]]
+     Zs = [[AtomicNumber(:X)];[AtomicNumber(specie_syms[1]) for _ = 1:length(Renv)]]
      z0 = AtomicNumber(:X)
      A[i, :] = eval_bond(basis, Rs, Zs, z0)[b_index]
      y[i, :] = V
    end
+   @info "│    LSQ run."
    c = qr(A) \ y
 
+   @info "│    set dict."
    train_dict = Dict()
    train_dict["size_A"] = size(A)
    train_dict["cond_A"] = cond(A)
@@ -104,13 +111,17 @@ function fit_BI(train, order, degree, env_deg, cutfunc; test = nothing)
    train_dict["error_train"] = norm(A*c-y)
    train_dict["basis"] = JSON.json(write_dict(basis))
    train_dict["basis_index"] = b_index
+   train_dict["nbonds"] = nbonds
+   train_dict["elm_names"] = [ String(elm) for elm in specie_syms ]
    
+   @info "│    set BI func."
    function BIfunc(R0,Renv)
        Rs = [[R0]; Renv]
        Zs = [[AtomicNumber(:X)];[AtomicNumber(:Al) for _ = 1:length(Renv)]]
        z0 = AtomicNumber(:X)
       return [dot(c[:,i],eval_bond(basis, Rs, Zs, z0)[b_index]) for i in 1:nbonds]
    end
+   @info "│    return BI funcs."
    return BIfunc, train_dict
 end
 

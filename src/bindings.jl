@@ -26,7 +26,7 @@ saveh5_SS = nothing
 saveh5_satoms = nothing
 model_onsite_vals = nothing
 
-function buildHS_test(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff, HH, SS, supercell_atoms; prt=0)
+function buildHS_test(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff, HH, SS, supercell_atoms; MPIproc=1)
 
     invcell = inv(atoms.cell)
     mesh = [9, 9, 9]
@@ -62,18 +62,18 @@ function buildHS_test(SKH_list, H, S, istart, iend, coords, species, nnei, inei,
           H[ix : iy] = vcat(HH[cid,:,:]...)
           S[ix : iy] = vcat(SS[cid,:,:]...)
        end
-       if(prt == 1)
+       if(MPIproc == 1)
           next!(prgres)
        end
     end
-    if(prt == 1)
+    if(MPIroc == 1)
        flush(stdout)
     end
 end
 
-function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; prt=0)
+function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
-    if(prt == 1)
+    if(MPIproc == 1)
        prgres = Progress(iend-istart+1, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
                          barlen=20)
@@ -117,11 +117,11 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
-       if(prt == 1)
+       if(MPIproc == 1)
           next!(prgres)
        end
     end
-    if(prt == 1)
+    if(MPIproc == 1)
        flush(stdout)
     end
 end
@@ -178,9 +178,9 @@ function set_model(natoms, nspecies,
                    lstr, specienames::Array{UInt8},
                    cutoff, 
                    lfn, fnames::Array{UInt8}, 
-                   prnt,
+                   MPIproc,
                    stat_jl::Array{Int32})
-    if(prnt == 1)
+    if(MPIproc == 1)
         @info "┌── ACEtb : Julia set_model function."
     end
     try
@@ -214,11 +214,11 @@ function set_model(natoms, nspecies,
         model_files = get_list_str(fnames, lfn, 200)
         global acetb_dct["model_files"] = model_files
 
-        if(prnt == 1)
+        if(MPIproc == 1)
             @info "│    Reading acetb.json file..."
         end
         filedata = read_json(model_files[1])
-        if(prnt == 1)
+        if(MPIproc == 1)
             @info "│    Reading is done."
         end
         global acetb_dct["file_data"] = filedata
@@ -247,43 +247,44 @@ function set_model(natoms, nspecies,
         end
         if Bpredict
             if Bfit
-                if(prnt == 1)
+                if(MPIproc == 1)
                     @info "│    Fitting..."
                 end
-                Bint_table, cutf_func, train_dict = train_and_predict(trdata, cutoff_params, fit_params)
-                if(prnt == 1)
+                Bint_table, cutf_func, train_dict = train_and_predict(trdata, elm_names, cutoff_params, fit_params)
+                if(MPIproc == 1)
+                    @info "│    Saving potential..."
                     write_json(model_files[1], train_dict)
                 end
                 global Bondint_table = Bint_table
                 global cutoff_func = cutf_func
-                if(prnt == 1)
+                if(MPIproc == 1)
                     @info "│    Fitting is done."
                 end
             else
-                if(prnt == 1)
+                if(MPIproc == 1)
                     @info "│    Loading model..."
                 end
                 Bint_table, cutf_func = predict(filedata, cutoff_params, fit_params)
                 global Bondint_table = Bint_table
                 global cutoff_func = cutf_func
-                if(prnt == 1)
+                if(MPIproc == 1)
                     @info "│    Model is load."
                 end
             end
         else
-            if(prnt == 1)
+            if(MPIproc == 1)
                 @info "│    This mode is test only. It will not use model predictions."
                 @info "│    Setting bond integral table..."
             end
             HSfile = filedata["HS_datasets"][1]
-            if(prnt == 1)
+            if(MPIproc == 1)
                 @info "│    Reading saved H,S file:", HSfile
             end
             HSdata = h5read_SK(HSfile; get_HS=true, get_atoms=true, get_metadata=true, get_energies=true)
             global saveh5_HH = permutedims(HSdata[2][1], [3, 2, 1])
             global saveh5_SS = permutedims(HSdata[2][2], [3, 2, 1])
             global saveh5_satoms = HSdata[6]
-            if(prnt == 1)
+            if(MPIproc == 1)
                @info "│    Setting H,S is done."
             end
         end
@@ -292,13 +293,13 @@ function set_model(natoms, nspecies,
     catch
         stat_jl[1] = 1
         for (exc, bt) in Base.catch_stack()
-            if(prnt == 1)
+            if(MPIproc == 1)
                 showerror(stdout, exc, bt)
                 println()
             end
         end
     end
-    if(prnt == 1)
+    if(MPIproc == 1)
         @info "└── ACEtb : Done at Julia module."
     end
 end
@@ -312,9 +313,9 @@ function model_predict(iatf, iatl, natoms,
                        nneigh::Array{Int32},
                        ineigh::Array{Int32},
                        ipair::Array{Int32}, cutoff,
-                       prnt,
+                       MPIproc,
                        stat_jl::Array{Int32})
-    if(prnt == 1)
+    if(MPIproc == 1)
         @info "┌── ACEtb : Julia model_predict function."
     end
     try
@@ -343,25 +344,25 @@ function model_predict(iatf, iatl, natoms,
         onsite_vals = filedata["onsite-terms"]
         onsite_terms = [onsite_vals[elm_names[species[a]]] for a=1:natoms]
         norbe = acetb_dct["norbe"]
-        if(prnt == 1)
+        if(MPIproc == 1)
             @info "│    Calculating bond integrals..."
         end
         if predict_params == 0
-           buildHS_test(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff, saveh5_HH, saveh5_SS, saveh5_satoms; prt=prnt)
+           buildHS_test(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)
         else
-           buildHS(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff; prt=prnt)
+           buildHS(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
         end
         stat_jl[1] = 0
     catch
         stat_jl[1] = 1
         for (exc, bt) in Base.catch_stack()
-            if(prnt == 1)
+            if(MPIproc == 1)
                 showerror(stdout, exc, bt)
                 println()
             end
         end
     end
-    if(prnt == 1)
+    if(MPIproc == 1)
         @info "└── ACEtb : Done at Julia module."
     end
 end
