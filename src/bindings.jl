@@ -79,7 +79,10 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
                          barlen=20)
     end
 
-    for ia = istart:iend
+    ProgressMeter.update!(prgres,0)
+    pm = Threads.Atomic{Int}(0)
+
+    Threads.@threads for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
        # Onsite blocks
@@ -91,7 +94,7 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        end
 
        # Offsite blocks
-       Threads.@threads for nj = 1:nnei[ia]
+       for nj = 1:nnei[ia]
           jn = offset + ia + nj
           ja = inei[jn]
           jsp = species[ja]
@@ -117,8 +120,10 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
+       Threads.atomic_add!(pm, 1)
        if(MPIproc == 1)
-          next!(prgres)
+          Threads.threadid() == 1 && ProgressMeter.update!(prgres, pm[])
+          #next!(prgres)
        end
     end
     if(MPIproc == 1)
