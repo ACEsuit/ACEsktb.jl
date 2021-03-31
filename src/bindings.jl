@@ -394,7 +394,7 @@ function acetb_greetings()
            "   │     Christoph Ortner      │\n"*
            "   │     James R. Kermode      │\n"*
            "   └───────────────────────────┘\n")
-   println("Julia threads:              ",Threads.nthreads())
+   println("Julia threads:               ",Threads.nthreads())
    flush(stdout)
 end
 
