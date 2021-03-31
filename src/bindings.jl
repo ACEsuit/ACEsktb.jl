@@ -132,7 +132,6 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        #Threads.unlock(plock)
     end
     if(MPIproc == 1)
-       ProgressMeter.update!(prgres, Nprg)
        flush(stdout)
     end
 end
