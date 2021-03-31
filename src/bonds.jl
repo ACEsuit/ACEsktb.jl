@@ -4,6 +4,7 @@ module Bonds
 
 using ACE, JuLIP, NeighbourLists
 using LinearAlgebra: norm, dot
+using StaticArrays
 
 using JuLIP.Potentials: neigsz!
 using JuLIP: evaluate
@@ -82,12 +83,11 @@ function get_env_neighs(coords, nnei, inei, R0, i, cut::BondCutoff) where {T}
       for nj = 1:nnei[i]
           jn = offset + i + nj
           ja = inei[jn]
-          Rij =  transpose(coords[:,ja] - coords[:,i])
-          Rj = SVector(Rij...)
-          if rmax < norm(Rj)
+          Rij =  SVector((coords[:,ja] - coords[:,i])...)
+          if rmax < norm(Rij)
              continue
           end
-          z, r = _get_zr(Rj, R0)
+          z, r = _get_zr(Rij, R0)
           if (z<= cut.zenv) && (r<=cut.renv)
              push!(Renv,R)
           end
