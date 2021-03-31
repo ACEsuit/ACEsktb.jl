@@ -356,6 +356,7 @@ function model_predict(iatf, iatl, natoms,
         onsite_terms = [onsite_vals[elm_names[species[a]]] for a=1:natoms]
         norbe = acetb_dct["norbe"]
         if(MPIproc == 1)
+            @info "│    Number of Julia Threads in use: ",Threads.nthreads()
             @info "│    Calculating bond integrals..."
         end
         if predict_params == 0
