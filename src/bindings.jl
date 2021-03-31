@@ -250,7 +250,7 @@ function set_model(natoms, nspecies,
                 if(MPIproc == 1)
                     @info "│    Fitting..."
                 end
-                Bint_table, cutf_func, train_dict = train_and_predict(trdata, elm_names, cutoff_params, fit_params)
+                Bint_table, cutf_func, train_dict = train_and_predict(trdata, elm_names, cutoff_params, fit_params; MPIproc=MPIproc)
                 if(MPIproc == 1)
                     @info "│    Saving potential..."
                     write_json(model_files[1], train_dict)
@@ -264,7 +264,7 @@ function set_model(natoms, nspecies,
                 if(MPIproc == 1)
                     @info "│    Loading model..."
                 end
-                Bint_table, cutf_func = predict(filedata, cutoff_params, fit_params)
+                Bint_table, cutf_func = predict(filedata, cutoff_params, fit_params; MPIproc=MPIproc)
                 global Bondint_table = Bint_table
                 global cutoff_func = cutf_func
                 if(MPIproc == 1)
