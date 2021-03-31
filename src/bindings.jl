@@ -378,7 +378,7 @@ function model_predict(iatf, iatl, natoms,
     end
 end
 
-function acetb_greetings()
+function acetb_greetings(MPIproc)
    ctx = Pkg.Operations.Context()
    acetb_version = string(ctx.env.manifest[ctx.env.project.deps["ACEtb"]].version)
    acetb_hash = split(string(ctx.env.project.deps["ACEtb"]),"-")[1]
@@ -395,6 +395,7 @@ function acetb_greetings()
            "   │     Christoph Ortner      │\n"*
            "   │     James R. Kermode      │\n"*
            "   └───────────────────────────┘\n")
+   println("Julia threads:              ",Threads.nthreads())
    flush(stdout)
 end
 
