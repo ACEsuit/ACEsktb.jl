@@ -9,7 +9,7 @@ using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
 using ACEtb.Utils: read_json, write_json
-using ACEtb.Predictions: predict
+using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
 using ProgressMeter
 
