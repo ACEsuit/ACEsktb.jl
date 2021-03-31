@@ -73,6 +73,28 @@ function _get_zr(R, R0)
    return z, r
 end
 
+function get_env_neighs(coords, nnei, inei, R0, i, cut::BondCutoff) where {T}
+   Renv = []
+   # condition on the bond length
+   if norm(R0) <= cut.rcut
+      rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
+      offset = i == 1 ? 0 : sum(nnei[1:i-1])
+      for nj = 1:nnei[i]
+          jn = offset + i + nj
+          ja = inei[jn]
+          Rij =  transpose(coords[:,ja] - coords[:,i])
+          if rmax < norm(Rij)
+             continue
+          end
+          z, r = _get_zr(Rij, R0)
+          if (z<= cut.zenv) && (r<=cut.renv)
+             push!(Renv,R)
+          end
+      end
+   end
+   return Renv
+end
+
 function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
    Renv = []
    # condition on the bond length

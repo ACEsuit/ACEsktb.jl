@@ -4,7 +4,7 @@ using Pkg
 using LinearAlgebra, LowRankApprox, Statistics, StaticArrays
 using JuLIP
 using ACE, ACEtb
-using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis
+using ACEtb.Bonds: BondCutoff, get_env, get_env_neighs, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
@@ -110,7 +110,7 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
 
           # Predictions 
           R0 = SVector(Rij...)
-          Renv = get_env(atoms, R0, ia, cutoff_func)
+          Renv = get_env_neighs(coords, species, nnei, inei, R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
