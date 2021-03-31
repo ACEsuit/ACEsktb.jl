@@ -8,7 +8,7 @@ using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
-using ACEtb.Utils: read_json, write_json, th_foreach
+using ACEtb.Utils: read_json, write_json
 using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
 using ProgressMeter
@@ -82,10 +82,9 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
     end
        
     pm = Threads.Atomic{Int}(0)
+    plock = Threads.SpinLock()
 
-    #Threads.@threads for ia = istart:iend
-    th_foreach(istart:iend) do tid, ia
-       Threads.atomic_add!(pm, 1)
+    Threads.@threads for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
        # Onsite blocks
@@ -123,10 +122,14 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
+       Threads.atomic_add!(pm, 1)
+       Threads.lock(plock)
        if(MPIproc == 1)
-          tid == 1 && ProgressMeter.update!(prgres, pm)
+          #tid == 1 && ProgressMeter.update!(prgres, pm)
+          ProgressMeter.update!(prgres, pm)
           #next!(prgres)
        end
+       Threads.unlock(plock)
     end
     if(MPIproc == 1)
        ProgressMeter.update!(prgres, Nprg)

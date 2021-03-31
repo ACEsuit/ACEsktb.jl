@@ -94,35 +94,4 @@ function h5read_SK(fname; get_HS=false, get_atoms=false, get_metadata=false, get
     return data
 end
 
-#The following funcions are taken from https://discourse.julialang.org/t/progressmeter-and-threads/11537
-function th_foreach(f::F, src; blocksize=20) where {F<:Function}
-    i = Threads.Atomic{Int}(1)
-    blocksize = min(blocksize, div(blocksize, length(solvers)))
-    function threads_fun()
-        tid = Threads.threadid()
-        n = length(src)
-        th_loop!(i, n, blocksize) do k
-            f(tid, src[k])
-        end
-    end
-
-    ccall(:jl_threading_run, Ref{Nothing}, (Any,), threads_fun)
-
-    nothing
-end
-
-function th_loop!(f::F, i, n, blocksize) where {F<:Function}
-    while true
-        k = Threads.atomic_add!(i, blocksize)
-        if k > n
-            break
-        end
-        upper = min(k + blocksize, n)
-        while k ≤ upper
-            f(k)
-            k += 1
-        end
-    end
-end
-
 end # End of Module
