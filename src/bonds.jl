@@ -83,10 +83,11 @@ function get_env_neighs(coords, nnei, inei, R0, i, cut::BondCutoff) where {T}
           jn = offset + i + nj
           ja = inei[jn]
           Rij =  transpose(coords[:,ja] - coords[:,i])
-          if rmax < norm(Rij)
+          Rj = SVector(Rij...)
+          if rmax < norm(Rj)
              continue
           end
-          z, r = _get_zr(Rij, R0)
+          z, r = _get_zr(Rj, R0)
           if (z<= cut.zenv) && (r<=cut.renv)
              push!(Renv,R)
           end
