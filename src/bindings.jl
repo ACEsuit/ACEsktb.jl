@@ -78,9 +78,9 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
                          barlen=20)
+       ProgressMeter.update!(prgres,0)
     end
-
-    ProgressMeter.update!(prgres,0)
+       
     pm = Threads.Atomic{Int}(0)
 
     #Threads.@threads for ia = istart:iend
