@@ -112,9 +112,9 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
-          E  = sk2cart(SKH_list[isp], Rij, VV[1:lnb], FHIaims=true)
+          E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], FHIaims=true)
           H[ix : iy] = vcat(E...)
-          ES = sk2cart(SKH_list[isp], Rij, VV[lnb+1:end], FHIaims=true)
+          ES = sk2cart(SKH_list[isp], R0, VV[lnb+1:end], FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
        if(MPIproc == 1)
