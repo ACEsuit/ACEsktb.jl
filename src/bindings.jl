@@ -377,7 +377,7 @@ function model_predict(iatf, iatl, natoms,
     end
 end
 
-function acetb_greetings(MPIproc)
+function acetb_greetings()
    ctx = Pkg.Operations.Context()
    acetb_version = string(ctx.env.manifest[ctx.env.project.deps["ACEtb"]].version)
    acetb_hash = split(string(ctx.env.project.deps["ACEtb"]),"-")[1]
