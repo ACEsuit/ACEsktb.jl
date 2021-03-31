@@ -70,17 +70,22 @@ end
 function load_BI(poten_dict; test = nothing)
    basis_string = poten_dict["basis"]
    basis = read_dict(JSON.parse(basis_string))
+   @info "│    basis shape: ",shape(basis)
    b_index = poten_dict["basis_index"]
-   c = transpose(poten_dict["c"])
+   @info "│    b_index shape: ",shape(b_index)
+   c = poten_dict["c"]
+   @info "│    c shape: ",shape(c)
    nbonds = poten_dict["nbonds"]
    specie_syms = poten_dict["elm_names"]
 
+   @info "│    set BI func."
    function BIfunc(R0,Renv)
       Rs = [[R0]; Renv]
       Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
       z0 = AtomicNumber(:X)
       return [dot(c[:,i],eval_bond(basis, Rs, Zs, z0)[b_index]) for i in 1:nbonds]
    end
+   @info "│    return BI func."
    return BIfunc
 end
 
@@ -118,7 +123,7 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
    @info "│    set BI func."
    function BIfunc(R0,Renv)
        Rs = [[R0]; Renv]
-       Zs = [[AtomicNumber(:X)];[AtomicNumber(:Al) for _ = 1:length(Renv)]]
+       Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
        z0 = AtomicNumber(:X)
       return [dot(c[:,i],eval_bond(basis, Rs, Zs, z0)[b_index]) for i in 1:nbonds]
    end
