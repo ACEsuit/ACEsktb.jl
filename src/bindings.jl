@@ -91,7 +91,7 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        end
 
        # Offsite blocks
-       for nj = 1:nnei[ia]
+       Threads.@threads for nj = 1:nnei[ia]
           jn = offset + ia + nj
           ja = inei[jn]
           jsp = species[ja]
