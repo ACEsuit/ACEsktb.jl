@@ -78,12 +78,8 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
                          barlen=20)
-       #ProgressMeter.update!(prgres,0)
     end
        
-    #pm = Threads.Atomic{Int}(0)
-    #plock = Threads.SpinLock()
-
     Threads.@threads for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -94,6 +90,9 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           S[io] = 1.0
           io += norbs[isp] + 1
        end
+       lnb = length(SKH_list[isp].bonds)
+
+       Rlist_i = get_i_env_neighs(ia, coords, nnei, inei, cutoff, cutoff_func)
 
        # Offsite blocks
        for nj = 1:nnei[ia]
@@ -103,33 +102,24 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ix = ipair[jn]
           iy = ix + norbs[isp] * norbs[jsp]
           ix += 1
-          Rij =  transpose(coords[:,ja] - coords[:,ia])
-          if cutoff < norm(Rij)
+          R0 =  Rlist_i[nj] 
+          if cutoff < norm(R0)
              continue
           end
 
           # Predictions 
-          R0 = SVector(Rij...)
-          Renv = get_env_neighs(coords, nnei, inei, R0, ia, cutoff_func)
+          Renv = get_env_neighs(Rlist_i, R0, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
-          lnb = length(SKH_list[isp].bonds)
-          VH = VV[1:lnb]
-          E  = sk2cart(SKH_list[isp], Rij, VH, FHIaims=true)
+          E  = sk2cart(SKH_list[isp], Rij, VV[1:lnb], FHIaims=true)
           H[ix : iy] = vcat(E...)
-          VS = VV[lnb+1:end]
-          ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
+          ES = sk2cart(SKH_list[isp], Rij, VV[lnb+1:end], FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
-       #Threads.atomic_add!(pm, 1)
-       #Threads.lock(plock)
        if(MPIproc == 1)
-          #tid == 1 && ProgressMeter.update!(prgres, pm)
-          #ProgressMeter.update!(prgres, pm)
           next!(prgres)
        end
-       #Threads.unlock(plock)
     end
     if(MPIproc == 1)
        flush(stdout)

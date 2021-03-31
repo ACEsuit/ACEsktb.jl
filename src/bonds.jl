@@ -74,23 +74,30 @@ function _get_zr(R, R0)
    return z, r
 end
 
-function get_env_neighs(coords, nnei, inei, R0, i, cut::BondCutoff) where {T}
+function get_i_env_neighs(i, coords, nnei, inei, cut::BondCutoff)
+   Renv = []
+   offset = i == 1 ? 0 : sum(nnei[1:i-1])
+   for nj = 1:nnei[i]
+      jn = offset + i + nj
+      ja = inei[jn]
+      Rij =  SVector((coords[:,ja] - coords[:,i])...)
+      push!(Renv,Rij)
+   end
+   return Renv
+end
+
+function get_env_neighs(Rt, R0, cut::BondCutoff)
    Renv = []
    # condition on the bond length
+   rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
    if norm(R0) <= cut.rcut
-      rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
-      offset = i == 1 ? 0 : sum(nnei[1:i-1])
-      for nj = 1:nnei[i]
-          jn = offset + i + nj
-          ja = inei[jn]
-          Rij =  SVector((coords[:,ja] - coords[:,i])...)
-          if rmax < norm(Rij)
-             continue
-          end
-          z, r = _get_zr(Rij, R0)
-          if (z<= cut.zenv) && (r<=cut.renv)
-             push!(Renv,Rij)
-          end
+      for R in Rt
+         if (norm(R) < rmax) || norm(R-R0) > 1e-10
+            z, r = _get_zr(R, R0)
+            if (z<= cut.zenv)&&(r<=cut.renv)
+               push!(Renv,R)
+            end
+         end
       end
    end
    return Renv
