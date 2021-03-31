@@ -89,7 +89,7 @@ function get_env_neighs(coords, nnei, inei, R0, i, cut::BondCutoff) where {T}
           end
           z, r = _get_zr(Rij, R0)
           if (z<= cut.zenv) && (r<=cut.renv)
-             push!(Renv,R)
+             push!(Renv,Rij)
           end
       end
    end
