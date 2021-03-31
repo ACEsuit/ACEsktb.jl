@@ -8,7 +8,7 @@ using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
-using ACEtb.Utils: read_json, write_json
+using ACEtb.Utils: read_json, write_json, th_loop, th_foreach
 using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
 using ProgressMeter
@@ -74,7 +74,8 @@ end
 function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
     if(MPIproc == 1)
-       prgres = Progress(iend-istart+1, dt=0.25, desc="[ Info: |    Calculating ... ",
+       Nprg = iend-istart+1
+       prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
                          barlen=20)
     end
@@ -82,7 +83,9 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
     ProgressMeter.update!(prgres,0)
     pm = Threads.Atomic{Int}(0)
 
-    Threads.@threads for ia = istart:iend
+    #Threads.@threads for ia = istart:iend
+    th_foreach(istart:iend) do tid, ia
+       Threads.atomic_add!(pm, 1)
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
        # Onsite blocks
@@ -120,13 +123,13 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
-       Threads.atomic_add!(pm, 1)
        if(MPIproc == 1)
-          Threads.threadid() == 1 && ProgressMeter.update!(prgres, pm[])
+          tid == 1 && ProgressMeter.update!(prgres, pm)
           #next!(prgres)
        end
     end
     if(MPIproc == 1)
+       ProgressMeter.update!(prgres, Nprg)
        flush(stdout)
     end
 end
