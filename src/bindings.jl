@@ -92,7 +92,7 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        end
        lnb = length(SKH_list[isp].bonds)
 
-       Rlist_i = get_i_env_neighs(ia, coords, nnei, inei, cutoff, cutoff_func)
+       Rlist_i = get_i_env_neighs(ia, coords, nnei, inei, cutoff_func)
 
        # Offsite blocks
        for nj = 1:nnei[ia]
