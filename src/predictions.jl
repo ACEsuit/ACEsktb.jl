@@ -71,7 +71,7 @@ function load_BI(poten_dict; test = nothing)
    basis_string = poten_dict["basis"]
    basis = read_dict(JSON.parse(basis_string))
    b_index = poten_dict["basis_index"]
-   c = convert(Array{Float64}, poten_dict["c"])
+   c = convert(Array{Float64,2}, poten_dict["c"])
    @info "c: ",c
    nbonds = poten_dict["nbonds"]
    specie_syms = poten_dict["elm_names"]
