@@ -78,11 +78,11 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
                          barlen=20)
-       ProgressMeter.update!(prgres,0)
+       #ProgressMeter.update!(prgres,0)
     end
        
-    pm = Threads.Atomic{Int}(0)
-    plock = Threads.SpinLock()
+    #pm = Threads.Atomic{Int}(0)
+    #plock = Threads.SpinLock()
 
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -122,14 +122,14 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ES = sk2cart(SKH_list[isp], Rij, VS, FHIaims=true)
           S[ix : iy] = vcat(ES...)
        end
-       Threads.atomic_add!(pm, 1)
-       Threads.lock(plock)
+       #Threads.atomic_add!(pm, 1)
+       #Threads.lock(plock)
        if(MPIproc == 1)
           #tid == 1 && ProgressMeter.update!(prgres, pm)
-          ProgressMeter.update!(prgres, pm)
-          #next!(prgres)
+          #ProgressMeter.update!(prgres, pm)
+          next!(prgres)
        end
-       Threads.unlock(plock)
+       #Threads.unlock(plock)
     end
     if(MPIproc == 1)
        ProgressMeter.update!(prgres, Nprg)
