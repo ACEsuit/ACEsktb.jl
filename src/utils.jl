@@ -106,7 +106,7 @@ function th_foreach(f::F, src; blocksize=20) where {F<:Function}
         end
     end
 
-    ccall(:jl_threading_run, Ref{Void}, (Any,), threads_fun)
+    ccall(:jl_threading_run, Ref{Nothing}, (Any,), threads_fun)
 
     nothing
 end
