@@ -295,7 +295,7 @@ function set_model(natoms, nspecies,
     flush(stdout)
 end
 
-funption set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
+function set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
    atnums = [] 
    #atmass = [] 
    for i=1:natoms
