@@ -4,7 +4,7 @@ using Pkg
 using LinearAlgebra, LowRankApprox, Statistics, StaticArrays
 using JuLIP
 using ACE, ACEtb
-using ACEtb.Bonds: BondCutoff, get_env, get_bond_env, get_ij_bond_envs, eval_bond, get_basis
+using ACEtb.Bonds: BondCutoff, get_env, get_env_neighs, get_all_neighs, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
@@ -162,6 +162,21 @@ function get_specie_name(str::Array{UInt8}, ln, n)
    return snames
 end
 
+function set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
+   atnums = [] 
+   #atmass = [] 
+   for i=1:natoms
+      sym = Symbol(elm_names[species[i]])
+      #am = atomic_mass(sym)
+      az = atomic_number(sym)
+      push!(atnums,az)
+      #push!(atmass,am)
+   end
+        
+   return Atoms(; X = pos[:,1:natoms], Z = atnums, cell = cell,
+                pbc = [true, true, true])
+end
+
 function set_model(natoms, nspecies, 
                    coords::Array{Float64},
                    latvecs::Array{Float64},
@@ -293,22 +308,6 @@ function set_model(natoms, nspecies,
         @info "└── ACEtb : Done at Julia module."
     end
     flush(stdout)
-end
-
-function set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
-   atnums = [] 
-   #atmass = [] 
-   for i=1:natoms
-      sym = Symbol(elm_names[species[i]])
-      #am = atomic_mass(sym)
-      az = atomic_number(sym)
-      push!(atnums,az)
-      #push!(atmass,am)
-   end
-        
-   at = Atoms(; X = pos[:,1:natoms], Z = atnums, cell = cell,
-                pbc = [true, true, true])
-   return at
 end
 
 function model_predict(iatf, iatl, natoms, 

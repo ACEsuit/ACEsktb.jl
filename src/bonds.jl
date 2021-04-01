@@ -74,20 +74,20 @@ function _get_zr(R, R0)
    return z, r
 end
 
-function get_i_neigh_Rs(i, coords, nnei, inei, cut::BondCutoff)
-   Renv = [] # holds environment of atom i
+function get_i_neigh_Rs(i, coords, nnei, inei)
+   Rt = [] # holds neighbours of atom i
    offset = i == 1 ? 0 : sum(nnei[1:i-1])
    for nj = 1:nnei[i]
       jn = offset + i + nj
-      ja = inei[jn]
-      Rij =  SVector((coords[:,ja] - coords[:,i])...)
-      push!(Renv,Rij)
+      j = inei[jn]
+      Rij =  SVector((coords[:,j] - coords[:,i])...)
+      push!(Rt,Rij)
    end
-   return Renv
+   return Rt
 end
 
-function get_all_neighs(N, coords, nnei, inei, cut::BondCutoff)
-   Rt = [ [] for i = 1:N ] # holds environments of all atoms
+function get_all_neighs(N, coords, nnei, inei)
+   Rt = [ [] for i = 1:N ] # holds neighs of all atoms
    
    Threads.@threads for ia = 1:N
       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
