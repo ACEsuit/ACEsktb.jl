@@ -107,8 +107,13 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
              continue
           end
 
-          # Predictions 
-          Renv = get_env_neighs(vcat(Rt[ia],Rt[ja]), R0, cutoff_func)
+          # Predictions
+          Rt_ij = vcat(Rt[ia],Rt[ja])
+          if(MPIproc == 1)
+             @info ia,ja,Rt_ij
+          end
+          
+          Renv = get_env_neighs(Rt_ij, R0, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
