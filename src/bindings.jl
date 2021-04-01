@@ -71,7 +71,7 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
     end
 end
 
-function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
+function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, i2a, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
     if(MPIproc == 1)
        Nprg = iend-istart+1
@@ -108,12 +108,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           end
 
           # Predictions
-          Rt_ij = vcat(Rt[ia],Rt[ja])
-          if(MPIproc == 1)
-             @info ia,ja,Rt_ij
-          end
-          
-          Renv = get_env_neighs(Rt_ij, R0, cutoff_func)
+          Renv = get_env_neighs(vcat(Rt[ia],Rt[i2a[ja]]), R0, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
@@ -323,7 +318,8 @@ function model_predict(iatf, iatl, natoms,
                        nS, S::Array{Float64},
                        nneigh::Array{Int32},
                        ineigh::Array{Int32},
-                       ipair::Array{Int32}, cutoff,
+                       ipair::Array{Int32}, 
+                       i2a::Array{Int32}, cutoff,
                        MPIproc,
                        stat_jl::Array{Int32})
     if(MPIproc == 1)
@@ -350,7 +346,7 @@ function model_predict(iatf, iatl, natoms,
         if predict_params == 0
            buildHS_test(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)
         else
-           buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
+           buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, i2a, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
         end
         stat_jl[1] = 0
     catch
