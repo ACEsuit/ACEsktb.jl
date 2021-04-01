@@ -80,7 +80,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
                          barlen=20)
     end
        
-    Rt = get_all_neighs(natoms, coords, nnei, inei, cutoff_func)
+    Rt = get_all_neighs(natoms, coords, nnei, inei)
 
     Threads.@threads for ia = istart:iend
        isp = species[ia]
