@@ -4,7 +4,7 @@ using Pkg
 using LinearAlgebra, LowRankApprox, Statistics, StaticArrays
 using JuLIP
 using ACE, ACEtb
-using ACEtb.Bonds: BondCutoff, get_env, get_env_neighs, get_i_env_neighs, eval_bond, get_basis
+using ACEtb.Bonds: BondCutoff, get_env, get_bond_env, get_ij_bond_envs, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
@@ -26,9 +26,9 @@ saveh5_SS = nothing
 saveh5_satoms = nothing
 model_onsite_vals = nothing
 
-function buildHS_test(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff, HH, SS, supercell_atoms; MPIproc=1)
+function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, HH, SS, supercell_atoms; MPIproc=1)
 
-    invcell = inv(atoms.cell)
+    invcell = inv(cell)
     mesh = [9, 9, 9]
     rcn = get_tbcells(supercell_atoms, invcell, mesh, 365)
 
@@ -71,7 +71,7 @@ function buildHS_test(SKH_list, H, S, istart, iend, coords, species, nnei, inei,
     end
 end
 
-function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipair, norbs, onsite_terms, atoms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
+function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
     if(MPIproc == 1)
        Nprg = iend-istart+1
@@ -80,6 +80,8 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
                          barlen=20)
     end
        
+    Rt = get_all_neighs(natoms, coords, nnei, inei, cutoff_func)
+
     Threads.@threads for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -92,8 +94,6 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
        end
        lnb = length(SKH_list[isp].bonds)
 
-       Rlist_i = get_i_env_neighs(ia, coords, nnei, inei, cutoff_func)
-
        # Offsite blocks
        for nj = 1:nnei[ia]
           jn = offset + ia + nj
@@ -102,13 +102,13 @@ function buildHS(SKH_list, H, S, istart, iend, coords, species, nnei, inei, ipai
           ix = ipair[jn]
           iy = ix + norbs[isp] * norbs[jsp]
           ix += 1
-          R0 =  Rlist_i[nj] 
+          R0 =  Rt[ia][nj] 
           if cutoff < norm(R0)
              continue
           end
 
           # Predictions 
-          Renv = get_env_neighs(Rlist_i, R0, cutoff_func)
+          Renv = get_env_neighs(vcat(Rt[ia],Rt[ja]), R0, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
@@ -194,18 +194,8 @@ function set_model(natoms, nspecies,
    
         elm_names = get_specie_name(specienames, lstr, nspecies)
         global acetb_dct["elm_names"] = elm_names[:]
-        atnums = [] 
-        atmass = [] 
-        for i=1:natoms
-           sym = Symbol(elm_names[species[i]])
-           am = atomic_mass(sym)
-           az = atomic_number(sym)
-           push!(atnums,az)
-           push!(atmass,am)
-        end
         
-        at = Atoms(; X = pos[:,1:natoms], Z = atnums, cell = cell,
-                     pbc = [true, true, true])
+        at = set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
         global acetb_dct["julip_atoms"] = at
     
         SKH_list = set_SK_orbitals(nspecies,nshells,angshell)
@@ -302,6 +292,23 @@ function set_model(natoms, nspecies,
     if(MPIproc == 1)
         @info "└── ACEtb : Done at Julia module."
     end
+    flush(stdout)
+end
+
+funption set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
+   atnums = [] 
+   #atmass = [] 
+   for i=1:natoms
+      sym = Symbol(elm_names[species[i]])
+      #am = atomic_mass(sym)
+      az = atomic_number(sym)
+      push!(atnums,az)
+      #push!(atmass,am)
+   end
+        
+   at = Atoms(; X = pos[:,1:natoms], Z = atnums, cell = cell,
+                pbc = [true, true, true])
+   return at
 end
 
 function model_predict(iatf, iatl, natoms, 
@@ -323,18 +330,7 @@ function model_predict(iatf, iatl, natoms,
         cell = reshape(latvecs,3,:) ./ bohr2ang
         
         elm_names = acetb_dct["elm_names"]
-        atnums = [] 
-        atmass = [] 
-        for i=1:natoms
-           sym = Symbol(elm_names[species[i]])
-           am = atomic_mass(sym)
-           az = atomic_number(sym)
-           push!(atnums,az)
-           push!(atmass,am)
-        end
-        
-        at = Atoms(; X = pos[:,1:natoms], Z = atnums, cell = cell,
-                     pbc = [true, true, true])
+        #at = set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
 
         SKH_list = acetb_dct["SKH_list"]
         model_files = acetb_dct["model_files"]
@@ -348,9 +344,9 @@ function model_predict(iatf, iatl, natoms,
             @info "│    Calculating bond integrals..."
         end
         if predict_params == 0
-           buildHS_test(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)
+           buildHS_test(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)
         else
-           buildHS(SKH_list, H, S, iatf, iatl, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, at, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
+           buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
         end
         stat_jl[1] = 0
     catch
@@ -365,6 +361,7 @@ function model_predict(iatf, iatl, natoms,
     if(MPIproc == 1)
         @info "└── ACEtb : Done at Julia module."
     end
+    flush(stdout)
 end
 
 function acetb_greetings()
