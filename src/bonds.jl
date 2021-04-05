@@ -100,7 +100,7 @@ function get_all_neighs(natoms, coords, nnei, inei)
          R0 =  SVector((coords[:,ja] - coords[:,ia])...)
          push!(Rij,R0)
       end
-      push!(Rt,R0)
+      push!(Rt,Rij)
    end
    return Rt
 end
