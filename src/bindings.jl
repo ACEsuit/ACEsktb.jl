@@ -103,15 +103,14 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           iy = ix + norbs[isp] * norbs[jsp]
           ix += 1
           R0 =  Rt[ia][nj] 
-          #R0 =  SVector((coords[:,ja] - coords[:,ia])...)
           if cutoff < norm(R0)
              continue
           end
 
           # Predictions
           #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
-          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
-          Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
+          #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
