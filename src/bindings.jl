@@ -80,7 +80,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
                          barlen=20)
     end
        
-    #Rt = get_all_neighs(natoms, coords, nnei, inei)
+    Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
 
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -102,8 +102,8 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           ix = ipair[jn]
           iy = ix + norbs[isp] * norbs[jsp]
           ix += 1
-          #R0 =  Rt[ia][nj] 
-          R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+          R0 =  Rt[ia][nj] 
+          #R0 =  SVector((coords[:,ja] - coords[:,ia])...)
           if cutoff < norm(R0)
              continue
           end

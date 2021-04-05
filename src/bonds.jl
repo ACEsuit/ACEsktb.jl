@@ -86,19 +86,22 @@ function get_i_neigh_Rs(i, coords, nnei, inei)
    return Rt
 end
 
-function get_all_neighs(N, coords, nnei, inei)
-   Rt = [ [] for i = 1:N ] # holds neighs of all atoms
+function get_all_neighs(natoms, coords, nnei, inei)
+   #Rt = [ [] for ia = 1:natoms ] # holds neighs of all atoms
+   Rt = []
    
-   Threads.@threads for ia = 1:N
+   #Threads.@threads for ia = 1:natoms
+   for ia = 1:natoms
+      Rij = []
       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
       for nj = 1:nnei[ia]
          jn = offset + ia + nj
          ja = inei[jn]
-         Rij =  SVector((coords[:,ja] - coords[:,ia])...)
-         push!(Rt[ia],Rij)
+         R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+         push!(Rij,R0)
       end
+      push!(Rt,R0)
    end
-
    return Rt
 end
 
