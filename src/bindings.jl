@@ -110,8 +110,8 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
 
           # Predictions
           #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
-          Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          Renv2 = get_env_neighs(Rt[ia], R0, cutoff_func)
+          Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
+          #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
