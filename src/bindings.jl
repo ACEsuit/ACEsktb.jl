@@ -81,8 +81,8 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
     end
        
     #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
-    #Rt = get_i_neighs(istart, iend, coords, nnei, inei)
-    Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
+    Rt = get_i_neighs(istart, iend, coords, nnei, inei)
+    #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
 
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -112,24 +112,25 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           # Predictions
           #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
           #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
-          if(MPIproc == 1)
-             Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-             jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
-          end
-          #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          if(MPIproc == 1)
-             for j1 in jlist
-                if j1 ∉ jlist2
-                   println("ia: ",ia," ja: ",ja," j1: ",j1)
-                end
-             end
-             for j2 in jlist2
-                if j2 ∉ jlist
-                    println("ia: ",ia," ja: ",ja," j2: ",j2)
-                end
-             end
-          end
+          #if(MPIproc == 1)
+          #   Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
+          #   jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
+          #end
+          #Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          #if(MPIproc == 1)
+          #   for j1 in jlist
+          #      if j1 ∉ jlist2
+          #         println("ia: ",ia," ja: ",ja," j1: ",j1)
+          #      end
+          #   end
+          #   for j2 in jlist2
+          #      if j2 ∉ jlist
+          #          println("ia: ",ia," ja: ",ja," j2: ",j2)
+          #      end
+          #   end
+          #end
+          
+          Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
           # Set H and S
