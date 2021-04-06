@@ -120,7 +120,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           if(MPIproc == 1)
              sort!(jlist)
-             println(jlist[ jlist !.== jlist2 ] )
+             println(jlist[ jlist .== jlist2 ] )
           end
           VV = Bondint_table(R0,Renv)
 
