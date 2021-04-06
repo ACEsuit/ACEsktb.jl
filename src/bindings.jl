@@ -113,6 +113,11 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
           #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
+          if(MPIproc == 1)
+             Renv1 = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+             VV1 = Bondint_table(R0,Renv1)
+             println(abs.(VV-VV1))
+          end
 
           # Set H and S
           E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], FHIaims=true)
