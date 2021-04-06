@@ -87,10 +87,8 @@ function get_i_neigh_Rs(i, coords, nnei, inei)
 end
 
 function get_all_neighs(natoms, coords, nnei, inei)
-   #Rt = [ [] for ia = 1:natoms ] # holds neighs of all atoms
    Rt = []
    
-   #Threads.@threads for ia = 1:natoms
    for ia = 1:natoms
       Rij = []
       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -115,7 +113,7 @@ function get_env_neighs(Rt, R0, cut::BondCutoff)
          if (norm(R)<=rmax)&&(norm(R-R0) > 1e-10)
             z, r = _get_zr(R, R0)
             if (z<= cut.zenv)&&(r<=cut.renv)
-               push!(Renv,R)
+               push!(Renv,R')
             end
          end
       end
