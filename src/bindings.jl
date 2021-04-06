@@ -121,12 +121,12 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           if(MPIproc == 1)
              for j1 in jlist
                 if j1 ∉ jlist2
-                   println("ia: ",ia," j1: ",j1)
+                   println("ia: ",ia," ja: ",ja," j1: ",j1)
                 end
              end
              for j2 in jlist2
                 if j2 ∉ jlist
-                    println("ia: ",ia," j2: ",j2)
+                    println("ia: ",ia," ja: ",ja," j2: ",j2)
                 end
              end
           end
