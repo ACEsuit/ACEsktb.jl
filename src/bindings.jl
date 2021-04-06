@@ -4,7 +4,7 @@ using Pkg
 using LinearAlgebra, LowRankApprox, Statistics, StaticArrays
 using JuLIP
 using ACE, ACEtb
-using ACEtb.Bonds: BondCutoff, get_env, get_env_neighs, get_all_neighs, get_i_neighs, eval_bond, get_basis
+using ACEtb.Bonds: BondCutoff, get_env, get_env_j, get_env_neighs, get_all_neighs, get_i_neighs, get_i_neighs_j, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
@@ -81,7 +81,8 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
     end
        
     #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
-    Rt = get_i_neighs(istart, iend, coords, nnei, inei)
+    #Rt = get_i_neighs(istart, iend, coords, nnei, inei)
+    Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
 
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -110,14 +111,18 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
 
           # Predictions
           #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
-          Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
-          #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          VV = Bondint_table(R0,Renv)
+          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
           if(MPIproc == 1)
-             Renv1 = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-             VV1 = Bondint_table(R0,Renv1)
-             println(abs.(VV-VV1))
+             Renv2, jlist2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
+             jl2 = sort!(jlist2)
           end
+          #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          if(MPIproc == 1)
+             jl1 = sort!(jlist)
+             println(jl1[ jl1 !.== jl2 ] )
+          end
+          VV = Bondint_table(R0,Renv)
 
           # Set H and S
           E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], FHIaims=true)
