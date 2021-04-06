@@ -114,13 +114,13 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
           if(MPIproc == 1)
              Renv2, jlist2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-             jl2 = sort!(jlist2)
+             sort!(jlist2)
           end
           #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           if(MPIproc == 1)
-             jl1 = sort!(jlist)
-             println(jl1[ jl1 !.== jl2 ] )
+             sort!(jlist)
+             println(jlist[ jlist !.== jlist2 ] )
           end
           VV = Bondint_table(R0,Renv)
 
