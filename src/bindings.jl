@@ -4,7 +4,7 @@ using Pkg
 using LinearAlgebra, LowRankApprox, Statistics, StaticArrays
 using JuLIP
 using ACE, ACEtb
-using ACEtb.Bonds: BondCutoff, get_env, get_env_j, get_env_neighs, get_all_neighs, get_i_neighs, get_i_neighs_j, eval_bond, get_basis
+using ACEtb.Bonds: BondCutoff, get_env, get_env_j, get_env_neighs, get_env_neighs_j, get_all_neighs, get_i_neighs, get_i_neighs_j, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
