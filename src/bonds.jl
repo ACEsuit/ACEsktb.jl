@@ -86,6 +86,23 @@ function get_i_neigh_Rs(i, coords, nnei, inei)
    return Rt
 end
 
+function get_i_neighs(istart, iend, coords, nnei, inei)
+   Rt = []
+   
+   for ia = istart:iend
+      Rij = []
+      offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
+      for nj = 1:nnei[ia]
+         jn = offset + ia + nj
+         ja = inei[jn]
+         R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+         push!(Rij,R0)
+      end
+      push!(Rt,Rij)
+   end
+   return Rt
+end
+
 function get_all_neighs(natoms, coords, nnei, inei)
    Rt = []
    
@@ -113,7 +130,7 @@ function get_env_neighs(Rt, R0, cut::BondCutoff)
          if (norm(R)<=rmax)&&(norm(R-R0) > 1e-10)
             z, r = _get_zr(R, R0)
             if (z<= cut.zenv)&&(r<=cut.renv)
-               push!(Renv,R')
+               push!(Renv,R)
             end
          end
       end
