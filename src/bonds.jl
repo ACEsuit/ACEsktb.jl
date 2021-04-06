@@ -108,13 +108,12 @@ end
 function get_env_neighs(Rt, R0, cut::BondCutoff)
    Renv = []
    # condition on the bond length
-   rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
-   if norm(R0) <= cut.rcut
+   normR0 = norm(R0)
+   if normR0 <= cut.rcut
+      rmax = sqrt((normR0+abs(cut.zenv))^2 + (cut.renv)^2)
       for R in Rt
-         if (norm(R)<=rmax) || (norm(R-R0) > 1e-10)
-            # Get the length and radius of cylinder 
-            #  that encloses i-j neighbours.
-            z, r = _get_zr(R, R0) 
+         if (norm(R)<=rmax)&&(norm(R-R0) > 1e-10)
+            z, r = _get_zr(R, R0)
             if (z<= cut.zenv)&&(r<=cut.renv)
                push!(Renv,R)
             end
