@@ -113,13 +113,12 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
           #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
           if(MPIproc == 1)
-             Renv2, jlist2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-             sort!(jlist2)
+             Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
+             jlist2 = [ jt[ia][jj] for jj in jl2 ]
           end
           #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           if(MPIproc == 1)
-             sort!(jlist)
              for j1 in jlist
                 if j1 not in jlist2
                     println("ia: ",ia," j1: ",j1)
