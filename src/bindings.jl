@@ -114,7 +114,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
           if(MPIproc == 1)
              Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-             jlist2 = [ jt[ia][jj] for jj in jl2 ]
+             jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
           end
           #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
