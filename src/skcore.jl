@@ -1,6 +1,7 @@
 using StaticArrays
 using ACEtb.SlaterKoster: get_l, get_bidx, bond_to_idx, sksignmat
 using ACEtb.Timer: to_timer
+using TimerOutputs
 
 export @skh_str, SKH
 

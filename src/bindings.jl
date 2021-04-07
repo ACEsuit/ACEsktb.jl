@@ -16,8 +16,6 @@ using ProgressMeter
 using Random
 using TimerOutputs
 
-const to_timer = TimerOutput()
-
 bohr2ang = 0.188972598857892E+01
 
 export set_model, model_predict, acetb_greetings
