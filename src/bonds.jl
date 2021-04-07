@@ -5,6 +5,8 @@ module Bonds
 using ACE, JuLIP, NeighbourLists
 using LinearAlgebra: norm, dot
 using StaticArrays
+using ACEtb.Timer: to_timer
+using TimerOutputs
 
 using JuLIP.Potentials: neigsz!
 using JuLIP: evaluate
@@ -55,9 +57,9 @@ BondCutoff(; r0 = nothing, pcut = 2,
    BondCutoff(pcut, rcut, renv, zenv)
 
 # cutoff for the bond
-fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
+@timeit to_timer fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
 
-function fenv(cut::BondCutoff, R, R0)
+@timeit to_timer function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
    # zeff = r/2 + cut.zenv
    zeff = norm(R0)/2 + cut.zenv
@@ -65,7 +67,7 @@ function fenv(cut::BondCutoff, R, R0)
           ((r/cut.renv)^2 - 1)^cut.pcut * (r<=cut.renv)
 end
 
-function _get_zr(R, R0)
+@timeit to_timer function _get_zr(R, R0)
    R̂0 = R0/norm(R0)
    o = R0/2
    z = dot(R - o, R̂0)
@@ -74,7 +76,7 @@ function _get_zr(R, R0)
    return z, r
 end
 
-function get_i_neigh_Rs(i, coords, nnei, inei)
+@timeit to_timer function get_i_neigh_Rs(i, coords, nnei, inei)
    Rt = [] # holds neighbours of atom i
    offset = i == 1 ? 0 : sum(nnei[1:i-1])
    for nj = 1:nnei[i]
@@ -86,7 +88,7 @@ function get_i_neigh_Rs(i, coords, nnei, inei)
    return Rt
 end
 
-function get_i_neighs(istart, iend, coords, nnei, inei)
+@timeit to_timer function get_i_neighs(istart, iend, coords, nnei, inei)
    Rt = []
    
    for ia = istart:iend
@@ -103,7 +105,7 @@ function get_i_neighs(istart, iend, coords, nnei, inei)
    return Rt
 end
 
-function get_i_neighs_j(istart, iend, coords, nnei, inei)
+@timeit to_timer function get_i_neighs_j(istart, iend, coords, nnei, inei)
    Rt = []
    jt = []
    
@@ -124,7 +126,7 @@ function get_i_neighs_j(istart, iend, coords, nnei, inei)
    return Rt, jt
 end
 
-function get_all_neighs(natoms, coords, nnei, inei)
+@timeit to_timer function get_all_neighs(natoms, coords, nnei, inei)
    Rt = []
    
    for ia = 1:natoms
@@ -141,7 +143,7 @@ function get_all_neighs(natoms, coords, nnei, inei)
    return Rt
 end
 
-function get_env_neighs(Rt, R0, cut::BondCutoff)
+@timeit to_timer function get_env_neighs(Rt, R0, cut::BondCutoff)
    Renv = []
    # condition on the bond length
    normR0 = norm(R0)
@@ -159,7 +161,7 @@ function get_env_neighs(Rt, R0, cut::BondCutoff)
    return Renv
 end
 
-function get_env_neighs_j(Rt, R0, cut::BondCutoff)
+@timeit to_timer function get_env_neighs_j(Rt, R0, cut::BondCutoff)
    Renv = []
    jenv = []
    # condition on the bond length
@@ -179,7 +181,7 @@ function get_env_neighs_j(Rt, R0, cut::BondCutoff)
    return Renv, jenv
 end
 
-function get_env_j(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
+@timeit to_timer function get_env_j(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
    Renv = []
    jenv = []
    # condition on the bond length
@@ -204,17 +206,17 @@ function get_env_j(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing
    return Renv, jenv
 end
 
-function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
+@timeit to_timer function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
    Renv = []
    # condition on the bond length
    if norm(R0) <= cut.rcut
       if nlist == nothing
          rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
-         nlist = neighbourlist(at, rmax)
+         nlist = @timeit to_timer "neighbourlist" neighbourlist(at, rmax)
       end
       maxR = maxneigs(nlist)
       tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(AtomicNumber, maxR))
-      j, Rt, Z = neigsz!(tmpRZ, nlist, at, i)
+      j, Rt, Z = @timeit to_timer "neigsz!" neigsz!(tmpRZ, nlist, at, i)
       for R in Rt
          if norm(R-R0) > 1e-10
             z, r = _get_zr(R, R0)
@@ -227,7 +229,7 @@ function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) 
    return Renv
 end
 
-function eval_bond(B, Rs, Zs, z0)
+@timeit to_timer function eval_bond(B, Rs, Zs, z0)
    r̂ = Rs[1] / norm(Rs[1])
    o = Rs[1]/2
    Rr = map( r_ -> (r = r_ - o; o + r - 2*dot(r,r̂)*r̂), Rs )
@@ -235,7 +237,7 @@ function eval_bond(B, Rs, Zs, z0)
    return evaluate(B, Rs, Zs, z0) + evaluate(B, Rr, Zs, z0)
 end
 
-function get_basis(order, degree, Fcut; Deg = nothing)
+@timeit to_timer function get_basis(order, degree, Fcut; Deg = nothing)
     # Create a basis with cylindrical symmetry start with a
     # standard ACE basis
     if Deg == nothing
@@ -325,8 +327,8 @@ alloc_temp(basis::Bond1pBasis, args...) =
    )
 
 
-function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
-                   Rs, Zs::AbstractVector, z0) where {TACE}
+@timeit to_timer function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
+                              Rs, Zs::AbstractVector, z0) where {TACE}
    Rbond = Rs[1]
    fill!(A, 0)
    iz0 = z2i(basis, z0)
@@ -337,18 +339,18 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
    @assert Zs[1] == 0
    fill!(P, 0)
    iz = z2i(basis, AtomicNumber(0))
-   add_into_A!(P, tmp.tmpace, basis.ace, Rbond, iz, iz0)
-   fc = fcut(basis.fcut, Rbond)
+   @timeit to_timer "add_into_A!" add_into_A!(P, tmp.tmpace, basis.ace, Rbond, iz, iz0)
+   fc = @timeit to_timer "fcut" fcut(basis.fcut, Rbond)
    Av = (@view A[basis.ace.Aindices[iz, iz0]])
    @. Av[:] = fc * P
 
    # environment
    for (R, Z) in zip(Rs[2:end], Zs[2:end])
-      iz = z2i(basis, Z)
+      iz = @timeit to_timer "z2i" z2i(basis, Z)
       fill!(P, 0)
-      add_into_A!(P, tmp.tmpace, basis.ace, R, iz, iz0)
+      @timeit to_timer "add_into_A!" add_into_A!(P, tmp.tmpace, basis.ace, R, iz, iz0)
       Av = (@view A[basis.ace.Aindices[iz, iz0]])
-      fenv_ = fenv(basis.fcut, R, Rbond)
+      fenv_ = @timeit to_timer "fenv" fenv(basis.fcut, R, Rbond)
       @. Av[:] += fenv_ * P
       # @. Av[:] += P
    end
@@ -358,7 +360,7 @@ end
 
 # ------------------------------
 
-function RPIBonds(B::RPIBasis, Fcut)
+@timeit to_timer function RPIBonds(B::RPIBasis, Fcut)
    basis1p = B.pibasis.basis1p
    bonds1p = Bond1pBasis(basis1p, Fcut)
    pibasis = PIBasis(bonds1p, B.pibasis.zlist, B.pibasis.inner, B.pibasis.evaluator)

@@ -4,13 +4,15 @@ using LinearAlgebra, LowRankApprox, StaticArrays
 using ACE, ACEtb
 using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis, read_dict, write_dict
 using ACEtb.Utils: get_data, read_json, write_json
+using ACEtb.Timer: to_timer
 using JSON
 using IterativeSolvers
+using TimerOutputs
 
 export predict, train_and_predict
 
 # Define the dictionaries from the parameters
-function degreeM(deg,order;env_deg = deg)
+@timeit to_timer function degreeM(deg,order;env_deg = deg)
    zX = AtomicNumber(:X)
    if order == 1
        Dn = Dict( "default" => deg,
@@ -38,7 +40,7 @@ function degreeM(deg,order;env_deg = deg)
   end
 end
 
-function train_and_predict(filenames, specie_syms, cutoff_params, fit_params; MPIproc=1)
+@timeit to_timer function train_and_predict(filenames, specie_syms, cutoff_params, fit_params; MPIproc=1)
     rcut = cutoff_params["rcut"]
     renv = cutoff_params["renv"]
     zenv = cutoff_params["zenv"]
@@ -58,7 +60,7 @@ function train_and_predict(filenames, specie_syms, cutoff_params, fit_params; MP
     return BII, cutfunc, train_dict
 end
 
-function predict(poten_dict, cutoff_params, fit_params; MPIproc=1)
+@timeit to_timer function predict(poten_dict, cutoff_params, fit_params; MPIproc=1)
     rcut = cutoff_params["rcut"]
     renv = cutoff_params["renv"]
     zenv = cutoff_params["zenv"]
@@ -71,7 +73,7 @@ function predict(poten_dict, cutoff_params, fit_params; MPIproc=1)
     return BII, cutfunc
 end
 
-function load_BI(poten_dict; test = nothing, MPIproc=1)
+@timeit to_timer function load_BI(poten_dict; test = nothing, MPIproc=1)
    basis_string = poten_dict["basis"]
    basis = read_dict(JSON.parse(basis_string))
    b_index = poten_dict["basis_index"]
@@ -94,7 +96,7 @@ function load_BI(poten_dict; test = nothing, MPIproc=1)
    return BIfunc
 end
 
-function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = nothing, MPIproc=1)
+@timeit to_timer function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = nothing, MPIproc=1)
    if(MPIproc == 1)
       @info "│    setting degreeM."
    end

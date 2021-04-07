@@ -1,5 +1,6 @@
 using StaticArrays
 using ACEtb.SlaterKoster: get_l, get_bidx, bond_to_idx, sksignmat
+using ACEtb.Timer: to_timer
 
 export @skh_str, SKH
 
@@ -59,7 +60,7 @@ function allbonds(orbitals::Vector{<: SKOrbital})
 end
 
 
-function SKH(orbitals::AbstractVector{<: SKOrbital},
+@timeit to_timer function SKH(orbitals::AbstractVector{<: SKOrbital},
              bonds::AbstractVector{<: SKBond},
              sig = StandardSigns)
    # construct local orbital -> index mapping
@@ -84,7 +85,7 @@ end
 _create_idx(orbitals::AbstractVector{<: SKOrbital}) =
    [ SKOrbital(o, idx) for (idx, o) in enumerate(orbitals) ]
 
-function SKH(orbitals::AbstractVector{<: SKOrbital}, sig=StandardSigns)
+@timeit to_timer function SKH(orbitals::AbstractVector{<: SKOrbital}, sig=StandardSigns)
    orbs_indx = _create_idx(orbitals)
    return SKH(orbs_indx, allbonds(orbs_indx), sig)
 end
@@ -113,7 +114,7 @@ alloc_block(H::SKH) = zeros(max_locidx(H::SKH), max_locidx(H::SKH))
 **Warning:** this is type-unstable and should not be used to assemble large
 Hamiltonians.
 """
-function sk2cart_other(H::SKH, R, V)
+@timeit to_timer function sk2cart_other(H::SKH, R, V)
    φ, θ = carttospher(R[1], R[2], R[3])
    E = alloc_block(H)
    for (b, Vb, (io1, io2)) in zip(H.bonds, V, H.b2o)
@@ -125,7 +126,7 @@ function sk2cart_other(H::SKH, R, V)
    return E
 end
 
-function sk2cart_FHIaims(H::SKH, R, V)
+@timeit to_timer function sk2cart_FHIaims(H::SKH, R, V)
    φ, θ = carttospher(R[1], R[2], R[3])
    E = alloc_block(H)
    for (b, Vb, (io1, io2)) in zip(H.bonds, V, H.b2o)
@@ -138,9 +139,9 @@ function sk2cart_FHIaims(H::SKH, R, V)
 end
 
 #sk2cart(H::SKH, R, V) = sk2cart_other(H::SKH, R, V)
-sk2cart(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_FHIaims(H::SKH, R, V) : sk2cart_other(H::SKH, R, V)
+@timeit to_timer sk2cart(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_FHIaims(H::SKH, R, V) : sk2cart_other(H::SKH, R, V)
 
-function sk2cart_onsite(H::SKH, Rlist, Vlist)
+@timeit to_timer function sk2cart_onsite(H::SKH, Rlist, Vlist)
    E = alloc_block(H)
    for (R, V) in zip(Rlist, Vlist)
        φ, θ = carttospher(R[1], R[2], R[3])
@@ -154,7 +155,7 @@ function sk2cart_onsite(H::SKH, Rlist, Vlist)
    return E
 end
 
-function sk2cart_onsite_FHIaims(H::SKH, Rlist, Vlist)
+@timeit to_timer function sk2cart_onsite_FHIaims(H::SKH, Rlist, Vlist)
    E = alloc_block(H)
    for (R, V) in zip(Rlist, Vlist)
        φ, θ = carttospher(R[1], R[2], R[3])
@@ -169,9 +170,9 @@ function sk2cart_onsite_FHIaims(H::SKH, Rlist, Vlist)
 end
 
 #sk2cart_onsite(H::SKH, R, V) = sk2cart_onsite_other(H::SKH, R, V)
-sk2cart_onsite(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_onsite_FHIaims(H::SKH, R, V) : sk2cart_onsite_other(H::SKH, R, V)
+@timeit to_timer sk2cart_onsite(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_onsite_FHIaims(H::SKH, R, V) : sk2cart_onsite_other(H::SKH, R, V)
 
-function sk2cart_num_other(H::SKH, R, V)
+@timeit to_timer function sk2cart_num_other(H::SKH, R, V)
    φ, θ = carttospher(R[1], R[2], R[3])
    E = alloc_block(H)
    for (b, Vb, (io1, io2)) in zip(H.bonds, V, H.b2o)
@@ -183,7 +184,7 @@ function sk2cart_num_other(H::SKH, R, V)
    return E
 end
 
-function sk2cart_num_FHIaims(H::SKH, R, V)
+@timeit to_timer function sk2cart_num_FHIaims(H::SKH, R, V)
    φ, θ = carttospher(R[1], R[2], R[3])
    E = alloc_block(H)
    for (b, Vb, (io1, io2)) in zip(H.bonds, V, H.b2o)
@@ -196,12 +197,12 @@ function sk2cart_num_FHIaims(H::SKH, R, V)
 end
 
 #sk2cart_num(H::SKH, R, V) = sk2cart_num_other(H::SKH, R, V)
-sk2cart_num(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_num_FHIaims(H::SKH, R, V) : sk2cart_num_other(H::SKH, R, V)
+@timeit to_timer sk2cart_num(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_num_FHIaims(H::SKH, R, V) : sk2cart_num_other(H::SKH, R, V)
 
 """
 todo doc
 """
-function cart2sk_other(H::SKH, R, E::AbstractArray)
+@timeit to_timer function cart2sk_other(H::SKH, R, E::AbstractArray)
    φ, θ = carttospher(R[1], R[2], R[3])
    V = zeros(length(H.bonds))
    for (I, (b, (io1, io2))) in enumerate(zip(H.bonds, H.b2o))
@@ -219,7 +220,7 @@ function cart2sk_other(H::SKH, R, E::AbstractArray)
    return V
 end
 
-function cart2sk_FHIaims(H::SKH, R, E::AbstractArray)
+@timeit to_timer function cart2sk_FHIaims(H::SKH, R, E::AbstractArray)
    φ, θ = carttospher(R[1], R[2], R[3])
    V = zeros(length(H.bonds))
    for (I, (b, (io1, io2))) in enumerate(zip(H.bonds, H.b2o))
@@ -238,9 +239,9 @@ function cart2sk_FHIaims(H::SKH, R, E::AbstractArray)
 end
 
 #cart2sk(H::SKH, R, V) = cart2sk_other(H::SKH, R, V)
-cart2sk(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_FHIaims(H::SKH, R, V) : cart2sk_other(H::SKH, R, V)
+@timeit to_timer cart2sk(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_FHIaims(H::SKH, R, V) : cart2sk_other(H::SKH, R, V)
 
-function cart2sk_num_other(H::SKH, R, E::AbstractArray)
+@timeit to_timer function cart2sk_num_other(H::SKH, R, E::AbstractArray)
    φ, θ = carttospher(R[1], R[2], R[3])
    V = zeros(length(H.bonds))
    for (I, (b, (io1, io2))) in enumerate(zip(H.bonds, H.b2o))
@@ -258,7 +259,7 @@ function cart2sk_num_other(H::SKH, R, E::AbstractArray)
    return V
 end
 
-function cart2sk_num_FHIaims(H::SKH, R, E::AbstractArray)
+@timeit to_timer function cart2sk_num_FHIaims(H::SKH, R, E::AbstractArray)
    φ, θ = carttospher(R[1], R[2], R[3])
    V = zeros(length(H.bonds))
    for (I, (b, (io1, io2))) in enumerate(zip(H.bonds, H.b2o))
@@ -277,4 +278,4 @@ function cart2sk_num_FHIaims(H::SKH, R, E::AbstractArray)
 end
 
 #cart2sk_num(H::SKH, R, V) = cart2sk_num_other(H::SKH, R, V)
-cart2sk_num(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_num_FHIaims(H::SKH, R, V) : cart2sk_num_other(H::SKH, R, V)
+@timeit to_timer cart2sk_num(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_num_FHIaims(H::SKH, R, V) : cart2sk_num_other(H::SKH, R, V)

@@ -11,8 +11,12 @@ using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
 using ACEtb.Utils: read_json, write_json
 using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
+using ACEtb.Timer: to_timer
 using ProgressMeter
 using Random
+using TimerOutputs
+
+const to_timer = TimerOutput()
 
 bohr2ang = 0.188972598857892E+01
 
@@ -27,7 +31,7 @@ saveh5_SS = nothing
 saveh5_satoms = nothing
 model_onsite_vals = nothing
 
-function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, HH, SS, supercell_atoms; MPIproc=1)
+@timeit to_timer function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, HH, SS, supercell_atoms; MPIproc=1)
 
     invcell = inv(cell)
     mesh = [9, 9, 9]
@@ -72,7 +76,7 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
     end
 end
 
-function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, i2a, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
+@timeit to_timer function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, i2a, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
     if(MPIproc == 1)
        Nprg = iend-istart+1
@@ -82,8 +86,8 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
     end
   
     #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
-    Rt = get_i_neighs(istart, iend, coords, nnei, inei)
-    #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
+    #Rt = get_i_neighs(istart, iend, coords, nnei, inei)
+    Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
 
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -111,28 +115,26 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           end
 
           # Predictions
-          #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
-          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
-          #if(MPIproc == 1)
-          #   Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-          #   jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
-          #end
-          #Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          #if(MPIproc == 1)
-          #   for j1 in jlist
-          #      if j1 ∉ jlist2
-          #         println("ia: ",ia," ja: ",ja," j1: ",j1)
-          #      end
-          #   end
-          #   for j2 in jlist2
-          #      if j2 ∉ jlist
-          #          println("ia: ",ia," ja: ",ja," j2: ",j2)
-          #      end
-          #   end
-          #end
+          Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
+          if(MPIproc == 1)
+             Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
+             jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
+          end
+          Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          if(MPIproc == 1)
+             for j1 in jlist
+                if j1 ∉ jlist2
+                   println("ia: ",ia," ja: ",ja," j1: ",j1)
+                end
+             end
+             for j2 in jlist2
+                if j2 ∉ jlist
+                    println("ia: ",ia," ja: ",ja," j2: ",j2)
+                end
+             end
+          end
           
-          Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          Renv_rnd = Renv[randperm(length(Renv))]
+          #Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv_rnd)
 
           # Set H and S
@@ -384,6 +386,7 @@ function model_predict(iatf, iatl, natoms,
     end
     if(MPIproc == 1)
         @info "└── ACEtb : Done at Julia module."
+        show(to_timer)
     end
     flush(stdout)
 end

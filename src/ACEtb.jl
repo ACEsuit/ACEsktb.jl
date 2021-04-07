@@ -2,6 +2,8 @@ module ACEtb
 
 using ACE, JuLIP, NeighbourLists, Reexport
 
+include("timer.jl")
+@reexport using ACEtb.Timer
 
 include("bonds.jl")
 @reexport using ACEtb.Bonds
