@@ -61,7 +61,7 @@ function allbonds(orbitals::Vector{<: SKOrbital})
 end
 
 
-@timeit to_timer function SKH(orbitals::AbstractVector{<: SKOrbital},
+function SKH(orbitals::AbstractVector{<: SKOrbital},
              bonds::AbstractVector{<: SKBond},
              sig = StandardSigns)
    # construct local orbital -> index mapping

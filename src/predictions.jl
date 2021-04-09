@@ -60,7 +60,7 @@ end
     return BII, cutfunc, train_dict
 end
 
-@timeit to_timer function predict(poten_dict, cutoff_params, fit_params; MPIproc=1)
+function predict(poten_dict, cutoff_params, fit_params; MPIproc=1)
     rcut = cutoff_params["rcut"]
     renv = cutoff_params["renv"]
     zenv = cutoff_params["zenv"]
@@ -73,7 +73,7 @@ end
     return BII, cutfunc
 end
 
-@timeit to_timer function load_BI(poten_dict; test = nothing, MPIproc=1)
+function load_BI(poten_dict; test = nothing, MPIproc=1)
    basis_string = poten_dict["basis"]
    basis = read_dict(JSON.parse(basis_string))
    b_index = poten_dict["basis_index"]

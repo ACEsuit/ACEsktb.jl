@@ -337,21 +337,21 @@ alloc_temp(basis::Bond1pBasis, args...) =
 
    # center-bond
    @assert Zs[1] == 0
-   fill!(P, 0)
-   iz = z2i(basis, AtomicNumber(0))
+   @timeit to_timer "fill!(P)" fill!(P, 0)
+   iz = @timeit to_timer "z2i" z2i(basis, AtomicNumber(0))
    @timeit to_timer "add_into_A!" add_into_A!(P, tmp.tmpace, basis.ace, Rbond, iz, iz0)
    fc = @timeit to_timer "fcut" fcut(basis.fcut, Rbond)
-   Av = (@view A[basis.ace.Aindices[iz, iz0]])
-   @. Av[:] = fc * P
+   Av = @timeit to_timer "view A[Aind]" (@view A[basis.ace.Aindices[iz, iz0]])
+   @timeit to_timer "fc * P" @. Av[:] = fc * P
 
    # environment
    for (R, Z) in zip(Rs[2:end], Zs[2:end])
       iz = @timeit to_timer "z2i" z2i(basis, Z)
-      fill!(P, 0)
+      @timeit to_timer "fill!(P)" fill!(P, 0)
       @timeit to_timer "add_into_A!" add_into_A!(P, tmp.tmpace, basis.ace, R, iz, iz0)
-      Av = (@view A[basis.ace.Aindices[iz, iz0]])
+      Av = @timeit to_timer "view A[Aind]" (@view A[basis.ace.Aindices[iz, iz0]])
       fenv_ = @timeit to_timer "fenv" fenv(basis.fcut, R, Rbond)
-      @. Av[:] += fenv_ * P
+      @timeit to_timer "fenv * P" @. Av[:] += fenv_ * P
       # @. Av[:] += P
    end
    return A
