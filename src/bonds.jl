@@ -55,7 +55,7 @@ BondCutoff(; r0 = nothing, pcut = 2,
    BondCutoff(pcut, rcut, renv, zenv)
 
 # cutoff for the bond
-fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
+@inline fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
 
 function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
@@ -65,7 +65,7 @@ function fenv(cut::BondCutoff, R, R0)
           ((r/cut.renv)^2 - 1)^cut.pcut * (r<=cut.renv)
 end
 
-function _get_zr(R, R0)
+@inline function _get_zr(R, R0)
    R̂0 = R0/norm(R0)
    o = R0/2
    z = dot(R - o, R̂0)
@@ -88,7 +88,7 @@ end
 
 function get_i_neighs(istart, iend, coords, nnei, inei)
    Rt = []
-   
+
    for ia = istart:iend
       Rij = []
       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -106,7 +106,7 @@ end
 function get_i_neighs_j(istart, iend, coords, nnei, inei)
    Rt = []
    jt = []
-   
+
    for ia = istart:iend
       Rij = []
       jj = []
@@ -126,7 +126,7 @@ end
 
 function get_all_neighs(natoms, coords, nnei, inei)
    Rt = []
-   
+
    for ia = 1:natoms
       Rij = []
       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -347,10 +347,14 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
       iz = z2i(basis, Z)
       fill!(P, 0)
       add_into_A!(P, tmp.tmpace, basis.ace, R, iz, iz0)
-      Av = (@view A[basis.ace.Aindices[iz, iz0]])
+
       fenv_ = fenv(basis.fcut, R, Rbond)
-      @. Av[:] += fenv_ * P
-      # @. Av[:] += P
+      i0 = basis.ace.Aindices[iz, iz0][1]-1
+      # this used to be a broadcase but for some reason that was a huge
+      # bottleneck...
+      @simd for n = 1:length(P)
+         @inbounds A[i0+n] += fenv_ * P[n]
+      end
    end
    return A
 end

@@ -86,7 +86,8 @@ function load_BI(poten_dict; test = nothing, MPIproc=1)
       Rs = [[R0]; Renv]
       Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
       z0 = AtomicNumber(:X)
-      return [dot(c[:,i],eval_bond(basis, Rs, Zs, z0)[b_index]) for i in 1:nbonds]
+      B = eval_bond(basis, Rs, Zs, z0)[b_index]
+      return [dot(c[:,i], B) for i in 1:nbonds]
    end
    if(MPIproc == 1)
       @info "│    return BI funcs."
@@ -98,11 +99,11 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
    if(MPIproc == 1)
       @info "│    setting degreeM."
    end
-   Deg = degreeM(degree,order;env_deg = env_deg) 
+   Deg = degreeM(degree,order;env_deg = env_deg)
    if(MPIproc == 1)
       @info "│    setting basis and b_index."
    end
-   basis, b_index = get_basis(order, 1., cutfunc; Deg = Deg) 
+   basis, b_index = get_basis(order, 1., cutfunc; Deg = Deg)
    if(MPIproc == 1)
       @info "│    basis function is set."
    end
@@ -134,7 +135,7 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
    train_dict["basis_index"] = b_index
    train_dict["nbonds"] = nbonds
    train_dict["elm_names"] = specie_syms
-   
+
    if(MPIproc == 1)
       @info "│    setting BI function."
    end
