@@ -204,6 +204,8 @@ end
 function set_model(natoms, nspecies, 
                    coords::Array{Float64},
                    latvecs::Array{Float64},
+                   tcellv::Array{Float64},
+                   rcellv::Array{Float64},
                    origin::Array{Float64},
                    species::Array{Int32},
                    nshells::Array{Int32},
@@ -227,7 +229,11 @@ function set_model(natoms, nspecies,
         global acetb_dct["ntypes"] = nspecies
         pos = reshape(coords,3,:) ./ bohr2ang
         cell = reshape(latvecs,3,:) ./ bohr2ang
+        tcells = reshape(tcellv,3,:) ./ bohr2ang
+        rcells = reshape(rcellv,3,:) ./ bohr2ang
         global acetb_dct["latvecs"] = cell[:,:]
+        global acetb_dct["tcellv"] = tcells[:,:]
+        global acetb_dct["rcellv"] = rcells[:,:]
         global acetb_dct["origin"] = origin[:]
         global acetb_dct["norbe"] = norbe
    
