@@ -82,7 +82,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
     end
   
     #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
-    Rt = get_i_neighs(istart, iend, coords, nnei, inei)
+    Rt = get_i_neighs(1, natoms, coords, nnei, inei)
     #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
 
     Threads.@threads for ia = istart:iend
