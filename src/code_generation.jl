@@ -64,7 +64,7 @@ end
 """
 `sk_table(L::Integer)` : read or create a table of SK matrix element expressions
 """
-function sk_table(L::Integer)
+function sk_table(L::Integer; WriteAllow::Bool=true)
    filepath = _fname_sktable()
    try
       tbl = JSON.parsefile(filepath)
@@ -72,11 +72,15 @@ function sk_table(L::Integer)
          # return the existing table
          return tbl
       end
-      @info("""The existing lookup table does not contain a high enough degree.
-               I'm now going to create a new one which can take a little while.""")
+      if WriteAllow
+         @info("""The existing lookup table does not contain a high enough degree.
+                  I'm now going to create a new one which can take a little while.""")
+      end
    catch
-      @info("""Reading SK lookup table was unsuccesful, I'm now going to create
-               a new one. This could take a while (O(minutes))""")
+      if WriteAllow
+         @info("""Reading SK lookup table was unsuccesful, I'm now going to create
+                  a new one. This could take a while (O(minutes))""")
+      end
    end
 
    # create a new lookup table
@@ -86,7 +90,9 @@ function sk_table(L::Integer)
          tbl[_lookupkey(l1,l2,m1,m2,sym)] = Gsym(l1,l2,m1,m2,sym)
       end
    end
-   save_dict(filepath, tbl)
+   if WriteAllow
+       save_dict(filepath, tbl)
+   end
 
    # return the new table
    return tbl
@@ -155,11 +161,11 @@ function py2jlcode(str)
    str = replace(str, "theta" => "θ")   # the python code uses beta here
 end
 
-
-@generated function sk_gen(::SKBond{O1, O2, SYM}, φ, θ) where {O1, O2, SYM}
+@generated function sk_gen(::SKBond{O1, O2, SYM}, φ, θ; W::TF=Val(true)) where {O1, O2, SYM, TF}
+   tf = TF == Val{true} ? true : false
    # get the SK expressions table
    l1, l2 = get_l(Val{O1}()), get_l(Val{O2}())
-   tbl = sk_table(max(l1,l2))
+   tbl = sk_table(max(l1,l2), WriteAllow=tf)
    expr_str = "SMatrix{$(2*l1+1),$(2*l2+1)}("
    for m2 = -l2:l2, m1 = -l1:l1
       ex = tbl[_lookupkey(l1, l2, m1, m2, get_bidx(Val{SYM}()))]
@@ -170,6 +176,7 @@ end
       $code
    end
 end
+
 
 tau(m) = (m >= 0) ? 1 : 0
 

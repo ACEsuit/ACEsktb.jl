@@ -7,7 +7,7 @@ using ACE, ACEtb
 using ACEtb.Bonds: BondCutoff, get_env, get_env_j, get_env_neighs, get_env_neighs_j, get_all_neighs, get_i_neighs, get_i_neighs_j, eval_bond, get_basis
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
-using ACEtb.SlaterKoster: SKH, sk2cart, cart2sk, allbonds, nbonds
+using ACEtb.SlaterKoster: sk2cart
 using ACEtb.Utils: read_json, write_json
 using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
@@ -74,7 +74,11 @@ end
 
 function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, i2a, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
+    WriteAllow = false
     if(MPIproc == 1)
+       if Threads.threadid() == 1
+          WriteAllow = true
+       end
        Nprg = iend-istart+1
        prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
                          barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
@@ -84,7 +88,7 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
     #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
     Rt = get_i_neighs(1, natoms, coords, nnei, inei)
     #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
-
+    
     Threads.@threads for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -136,9 +140,9 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           VV = Bondint_table(R0,Renv_rnd)
 
           # Set H and S
-          E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], FHIaims=true)
+          E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], WriteAllow=WriteAllow)
           H[ix : iy] = vcat(E...)
-          ES = sk2cart(SKH_list[isp], R0, VV[lnb+1:end], FHIaims=true)
+          ES = sk2cart(SKH_list[isp], R0, VV[lnb+1:end], WriteAllow=WriteAllow)
           S[ix : iy] = vcat(ES...)
        end
        if(MPIproc == 1)

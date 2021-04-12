@@ -113,11 +113,11 @@ alloc_block(H::SKH) = zeros(max_locidx(H::SKH), max_locidx(H::SKH))
 **Warning:** this is type-unstable and should not be used to assemble large
 Hamiltonians.
 """
-function sk2cart_other(H::SKH, R, V)
+function sk2cart_other(H::SKH, R, V; WriteAllow::Bool=true)
    φ, θ = carttospher(R[1], R[2], R[3])
    E = alloc_block(H)
    for (b, Vb, (io1, io2)) in zip(H.bonds, V, H.b2o)
-      G12 = CodeGeneration.sk_gen(b, φ, θ)
+      G12 = CodeGeneration.sk_gen(b, φ, θ, W=Val(WriteAllow))
       I1 = H.locorbidx[io1]
       I2 = H.locorbidx[io2]
       E[I1, I2] .+= (sksign(b) * Vb) * G12
@@ -125,11 +125,11 @@ function sk2cart_other(H::SKH, R, V)
    return E
 end
 
-function sk2cart_FHIaims(H::SKH, R, V)
+function sk2cart_FHIaims(H::SKH, R, V; WriteAllow::Bool=true)
    φ, θ = carttospher(R[1], R[2], R[3])
    E = alloc_block(H)
    for (b, Vb, (io1, io2)) in zip(H.bonds, V, H.b2o)
-      G12 = CodeGeneration.sk_gen(b, φ, θ)
+      G12 = CodeGeneration.sk_gen(b, φ, θ, W=Val(WriteAllow))
       I1 = H.locorbidx[io1]
       I2 = H.locorbidx[io2]
       E[I1, I2] .+= (sksign(b) * Vb) * G12 .* sksignmat(b)
@@ -137,8 +137,7 @@ function sk2cart_FHIaims(H::SKH, R, V)
    return E
 end
 
-#sk2cart(H::SKH, R, V) = sk2cart_other(H::SKH, R, V)
-sk2cart(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_FHIaims(H::SKH, R, V) : sk2cart_other(H::SKH, R, V)
+sk2cart(H::SKH, R, V; FHIaims::Bool=true, WriteAllow::Bool=true) = FHIaims ? sk2cart_FHIaims(H::SKH, R, V, WriteAllow=WriteAllow) : sk2cart_other(H::SKH, R, V, WriteAllow=WriteAllow)
 
 function sk2cart_onsite(H::SKH, Rlist, Vlist)
    E = alloc_block(H)
