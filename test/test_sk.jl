@@ -178,7 +178,7 @@ V = rand(nbonds(H))
 U = rand(3) .- 0.5
 U /= norm(U)
 Hnew = sk2cart(H, U, V)
-Hnew2 = sk2cart_num(H, U, V)
+Hnew2 = sk2cart_num(H, U, V, FHIaims=true)
 println(@test Hnew ≈ Hnew2)
 
 #@info("cart2sk vs cart2sk_num : spspd")

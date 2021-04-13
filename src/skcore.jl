@@ -193,7 +193,7 @@ function sk2cart_num_FHIaims(H::SKH, R, V)
    return E
 end
 
-sk2cart_num(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_num_FHIaims(H::SKH, R, V) : sk2cart_num_other(H::SKH, R, V)
+sk2cart_num(H::SKH, R, V; FHIaims=true) = FHIaims ? sk2cart_num_FHIaims(H::SKH, R, V) : sk2cart_num_other(H::SKH, R, V)
 
 """
 todo doc
@@ -272,4 +272,4 @@ function cart2sk_num_FHIaims(H::SKH, R, E::AbstractArray)
    return V
 end
 
-cart2sk_num(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_num_FHIaims(H::SKH, R, V) : cart2sk_num_other(H::SKH, R, V)
+cart2sk_num(H::SKH, R, V; FHIaims=true) = FHIaims ? cart2sk_num_FHIaims(H::SKH, R, V) : cart2sk_num_other(H::SKH, R, V)
