@@ -167,7 +167,6 @@ function sk2cart_onsite_FHIaims(H::SKH, Rlist, Vlist)
    return E
 end
 
-#sk2cart_onsite(H::SKH, R, V) = sk2cart_onsite_other(H::SKH, R, V)
 sk2cart_onsite(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_onsite_FHIaims(H::SKH, R, V) : sk2cart_onsite_other(H::SKH, R, V)
 
 function sk2cart_num_other(H::SKH, R, V)
@@ -194,17 +193,16 @@ function sk2cart_num_FHIaims(H::SKH, R, V)
    return E
 end
 
-#sk2cart_num(H::SKH, R, V) = sk2cart_num_other(H::SKH, R, V)
 sk2cart_num(H::SKH, R, V; FHIaims=false) = FHIaims ? sk2cart_num_FHIaims(H::SKH, R, V) : sk2cart_num_other(H::SKH, R, V)
 
 """
 todo doc
 """
-function cart2sk_other(H::SKH, R, E::AbstractArray)
+function cart2sk_other(H::SKH, R, E::AbstractArray; WriteAllow::Bool=true)
    φ, θ = carttospher(R[1], R[2], R[3])
    V = zeros(length(H.bonds))
    for (I, (b, (io1, io2))) in enumerate(zip(H.bonds, H.b2o))
-      G12 = CodeGeneration.sk_gen(b, φ, θ)
+      G12 = CodeGeneration.sk_gen(b, φ, θ, W=Val(WriteAllow))
       I1 = H.locorbidx[io1]
       I2 = H.locorbidx[io2]
       b_l = get_bidx(b) # bond symbol to L
@@ -218,11 +216,11 @@ function cart2sk_other(H::SKH, R, E::AbstractArray)
    return V
 end
 
-function cart2sk_FHIaims(H::SKH, R, E::AbstractArray)
+function cart2sk_FHIaims(H::SKH, R, E::AbstractArray; WriteAllow::Bool=true)
    φ, θ = carttospher(R[1], R[2], R[3])
    V = zeros(length(H.bonds))
    for (I, (b, (io1, io2))) in enumerate(zip(H.bonds, H.b2o))
-      G12 = CodeGeneration.sk_gen(b, φ, θ)
+      G12 = CodeGeneration.sk_gen(b, φ, θ, W=Val(WriteAllow))
       I1 = H.locorbidx[io1]
       I2 = H.locorbidx[io2]
       b_l = get_bidx(b) # bond symbol to L
@@ -236,8 +234,7 @@ function cart2sk_FHIaims(H::SKH, R, E::AbstractArray)
    return V
 end
 
-#cart2sk(H::SKH, R, V) = cart2sk_other(H::SKH, R, V)
-cart2sk(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_FHIaims(H::SKH, R, V) : cart2sk_other(H::SKH, R, V)
+cart2sk(H::SKH, R, V; FHIaims::Bool=true, WriteAllow::Bool=true) = FHIaims ? cart2sk_FHIaims(H::SKH, R, V; WriteAllow=WriteAllow) : cart2sk_other(H::SKH, R, V; WriteAllow=WriteAllow)
 
 function cart2sk_num_other(H::SKH, R, E::AbstractArray)
    φ, θ = carttospher(R[1], R[2], R[3])
@@ -275,5 +272,4 @@ function cart2sk_num_FHIaims(H::SKH, R, E::AbstractArray)
    return V
 end
 
-#cart2sk_num(H::SKH, R, V) = cart2sk_num_other(H::SKH, R, V)
 cart2sk_num(H::SKH, R, V; FHIaims=false) = FHIaims ? cart2sk_num_FHIaims(H::SKH, R, V) : cart2sk_num_other(H::SKH, R, V)
