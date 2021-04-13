@@ -161,7 +161,7 @@ function py2jlcode(str)
    str = replace(str, "theta" => "θ")   # the python code uses beta here
 end
 
-@generated function sk_gen(::SKBond{O1, O2, SYM}, φ, θ; W::TF=Val(true)) where {O1, O2, SYM, TF}
+@generated function sk_gen(::SKBond{O1, O2, SYM}, φ, θ; W::TF=Val{true}) where {O1, O2, SYM, TF}
    tf = TF == Val{true} ? true : false
    # get the SK expressions table
    l1, l2 = get_l(Val{O1}()), get_l(Val{O2}())
