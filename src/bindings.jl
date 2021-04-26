@@ -80,14 +80,113 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           WriteAllow = true
        end
        Nprg = iend-istart+1
-       prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
-                         barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
-                         barlen=20)
+       if isa(stdout, Base.TTY)
+          prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
+                            barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
+                            barlen=20)
+       end
     end
   
     #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
-    Rt = get_i_neighs(1, natoms, coords, nnei, inei)
+    #Rt = get_i_neighs(1, natoms, coords, nnei, inei)
     #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
+    
+    Threads.@threads for ia = istart:iend
+       isp = species[ia]
+       offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
+       # Onsite blocks
+       io = ipair[offset + ia] + 1
+       for ib = 1:norbs[isp]
+          H[io] = onsite_terms[isp][ib]
+          S[io] = 1.0
+          io += norbs[isp] + 1
+       end
+       lnb = length(SKH_list[isp].bonds)
+
+       # Offsite blocks
+       for nj = 1:nnei[ia]
+          jn = offset + ia + nj
+          ja = inei[jn]
+          jsp = species[ja]
+          ix = ipair[jn]
+          iy = ix + norbs[isp] * norbs[jsp]
+          ix += 1
+          #R0 =  Rt[ia][nj] 
+          R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+          if cutoff < norm(R0)
+             continue
+          end
+
+          # Predictions
+          #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
+          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
+          #if(MPIproc == 1)
+          #   Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
+          #   jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
+          #end
+          #Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          #if(MPIproc == 1)
+          #   for j1 in jlist
+          #      if j1 ∉ jlist2
+          #         println("ia: ",ia," ja: ",ja," j1: ",j1)
+          #      end
+          #   end
+          #   for j2 in jlist2
+          #      if j2 ∉ jlist
+          #          println("ia: ",ia," ja: ",ja," j2: ",j2)
+          #      end
+          #   end
+          #end
+          
+          Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          VV = Bondint_table(R0,Renv)
+
+          # Set H and S
+          E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], WriteAllow=WriteAllow)
+          H[ix : iy] = vcat(E...)
+          ES = sk2cart(SKH_list[isp], R0, VV[lnb+1:end], WriteAllow=WriteAllow)
+          S[ix : iy] = vcat(ES...)
+       end
+       if(MPIproc == 1)
+          if isa(stdout, Base.TTY)
+             next!(prgres)
+          end
+       end
+    end
+    if(MPIproc == 1)
+       flush(stdout)
+    end
+end
+
+function buildHS_dftb_neigh(SKH_list, H, S, istart, iend, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
+
+    tbcells = get_translation_cells(acetb_dct["julip_atoms"].cell, cutoff)
+    nnei, inei, i2a, icellvec, coords, species = get_neighbours(acetb_dct["julip_atoms"], tbcells, cutoff)
+    ipair = get_sparse_indexing(acetb_dct["julip_atoms"], nnei, inei, i2a, norbs)
+
+    inei = vcat(inei...)
+    ipair = vcat(ipair...)
+    coords = transpose(coords)
+    println("---")
+    println(size(nnei))
+    println(size(inei))
+    println(size(ipair))
+    println(size(coords))
+
+    WriteAllow = false
+    if(MPIproc == 1)
+       if Threads.threadid() == 1
+          WriteAllow = true
+       end
+       Nprg = iend-istart+1
+       if isa(stdout, Base.TTY)
+          prgres = Progress(Nprg, dt=0.25, desc="[ Info: |    Calculating ... ",
+                            barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▅' ,'▆', '▇'],' ','|',),
+                            barlen=20)
+       end
+    end
+  
+    Rt = get_i_neighs(1, length(acetb_dct["julip_atoms"]), coords, nnei, inei)
     
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -115,29 +214,9 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           end
 
           # Predictions
-          #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
-          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
-          #if(MPIproc == 1)
-          #   Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-          #   jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
-          #end
-          #Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          #if(MPIproc == 1)
-          #   for j1 in jlist
-          #      if j1 ∉ jlist2
-          #         println("ia: ",ia," ja: ",ja," j1: ",j1)
-          #      end
-          #   end
-          #   for j2 in jlist2
-          #      if j2 ∉ jlist
-          #          println("ia: ",ia," ja: ",ja," j2: ",j2)
-          #      end
-          #   end
-          #end
           
           Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          Renv_rnd = Renv[randperm(length(Renv))]
-          VV = Bondint_table(R0,Renv_rnd)
+          VV = Bondint_table(R0,Renv)
 
           # Set H and S
           E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], WriteAllow=WriteAllow)
@@ -146,7 +225,9 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           S[ix : iy] = vcat(ES...)
        end
        if(MPIproc == 1)
-          next!(prgres)
+          if isa(stdout, Base.TTY)
+             next!(prgres)
+          end
        end
     end
     if(MPIproc == 1)
@@ -240,7 +321,9 @@ function set_model(natoms, nspecies,
         global acetb_dct["rcellv"] = rcells[:,:]
         global acetb_dct["origin"] = origin[:]
         global acetb_dct["norbe"] = norbe
-   
+    
+        println(size(tcells))
+
         elm_names = get_specie_name(specienames, lstr, nspecies)
         global acetb_dct["elm_names"] = elm_names[:]
         
@@ -362,6 +445,7 @@ function model_predict(iatf, iatl, natoms,
     try
         pos = reshape(coords,3,:) ./ bohr2ang
         cell = reshape(latvecs,3,:) ./ bohr2ang
+        cutoff /= bohr2ang
         
         elm_names = acetb_dct["elm_names"]
         #at = set_JuLIP_atoms(elm_names, natoms, pos, species, cell)
@@ -376,9 +460,15 @@ function model_predict(iatf, iatl, natoms,
         norbe = acetb_dct["norbe"]
         if(MPIproc == 1)
             @info "│    Calculating bond integrals..."
+            println(size(nneigh))
+            println(size(ineigh))
+            println(size(ipair))
+            println(size(pos))
         end
         if predict_params == 0
            buildHS_test(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)
+        elseif predict_params == -1
+           buildHS_dftb_neigh(SKH_list, H, S, iatf, iatl, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
         else
            buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, i2a, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
         end
@@ -402,10 +492,17 @@ function acetb_greetings()
    ctx = Pkg.Operations.Context()
    acetb_version = string(ctx.env.manifest[ctx.env.project.deps["ACEtb"]].version)
    acetb_hash = split(string(ctx.env.project.deps["ACEtb"]),"-")[1]
-   println("  \033[31m\033[1m  ___\033[38;5;208m ___\033[32m ___\033[34m _____\033[38;5;54m\033[1m _    \033[0m       \n"*
-           "  \033[31m\033[1m |_  \033[38;5;208m|  _\033[32m| __\033[34m|_   _\033[38;5;54m\033[1m| |_   \033[0m\033[38;5;141m\033[1mVersion\033[0m   \n"*
-           "  \033[31m\033[1m | . \033[38;5;208m| |_\033[32m| __|\033[34m | | \033[38;5;54m\033[1m| . |  \033[0m\033[38;5;200m\033[1mv",acetb_version,"\033[0m   \n"*
-           "  \033[31m\033[1m |___\033[38;5;208m|___\033[32m|___|\033[34m |__|\033[38;5;54m\033[1m|___|  \033[0m\033[1m[",acetb_hash,"]\033[0m\n")
+   if isa(stdout, Base.TTY)
+      println("  \033[31m\033[1m  ___\033[38;5;208m ___\033[32m ___\033[34m _____\033[38;5;54m\033[1m _    \033[0m       \n"*
+              "  \033[31m\033[1m |_  \033[38;5;208m|  _\033[32m| __\033[34m|_   _\033[38;5;54m\033[1m| |_   \033[0m\033[38;5;141m\033[1mVersion\033[0m   \n"*
+              "  \033[31m\033[1m | . \033[38;5;208m| |_\033[32m| __|\033[34m | | \033[38;5;54m\033[1m| . |  \033[0m\033[38;5;200m\033[1mv",acetb_version,"\033[0m   \n"*
+              "  \033[31m\033[1m |___\033[38;5;208m|___\033[32m|___|\033[34m |__|\033[38;5;54m\033[1m|___|  \033[0m\033[1m[",acetb_hash,"]\033[0m\n")
+   else
+      println("    ___ ___ ___ _____ _            \n"*
+              "   |_  |  _| __|_   _| |_   Version\n"*
+              "   | . | |_| __| | | | . |  v",acetb_version,"   \n"*
+              "   |___|___|___| |__||___|  [",acetb_hash,"]\n")
+   end
    println("   ┌───────────────────────────┐\n"*
            "   │   Developers:             │\n"*
            "   ├───────────────────────────┤\n"*
