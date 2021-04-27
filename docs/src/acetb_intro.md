@@ -1,20 +1,13 @@
 
 # ACEtb.jl Documentation
 
-This package implements 
 
+This package extends `ACE.jl` which
+provides approximation schemes for permutation and isometry invariant functions,
+based on symmetric polynomial, in the case where the function to approximate satisfy permutation invariance with respect to like atoms, and rotation invariance with respect to a bond.
 
-```@contents
-Pages = ["intro.md",
-         "gettingstarted.md",
-         "acetb_intro.md", 
-         "dftbplus_acetb.md",
-         "devel.md"]
-Depth = 1
-```
+To ensure the symmetry, the basis functions are of the form
 
-### Building the Documentation
+$f(R_{ij}; R_{env}) = g(R_{env}-R_i) + g(R_{env}-R_j)$,
 
-* To build the documentation locally, use the `make.jl` script. Simply switch to `ACEtb/docs` and execute `julia make.jl`
-* To publish the documentation to github, use the `publish.sh` script: switch to `ACEtb/docs` and execute `./publish.sh`. This will close the `ACE_gh repository (if it isn't already), the copy into it the website, and git commit, push.
-
+where $g$ is an ACE function, i.e. satisfies rotation invariance. Here $R_{ij}$ is the vector of the bond and $R_{env}$ contains the coordinates of the atoms near the bond.
