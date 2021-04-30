@@ -10,7 +10,7 @@ Pages = ["intro.md",
          "acetb_intro.md", 
          "dftbplus_acetb.md",
          "devel.md"]
-Depth = 1
+Depth = 2
 ```
 
 ### Building the Documentation
