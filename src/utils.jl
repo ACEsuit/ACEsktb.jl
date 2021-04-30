@@ -7,10 +7,10 @@ import HDF5, JSON
 function get_data(filenames, cutfunc, get_env)
     data = []
     for f in filenames
-        SKdata = h5read_SK(f; get_HS=true, 
-                              get_atoms=true, 
-                              get_metadata=true, 
-                              get_energies=true)
+        SKdata = h5read_SK(f[1]; get_HS=true, 
+                                 get_atoms=true, 
+                                 get_metadata=true, 
+                                 get_energies=true)
 
         kk = size(SKdata[1],2)
         ijmat = Int.(SKdata[1][1:2,1:kk])
@@ -19,6 +19,13 @@ function get_data(filenames, cutfunc, get_env)
         ijRijmat = SKdata[1][sel_ijR,1:kk]
         Bondint = SKdata[1][6:end,1:kk]
         at = SKdata[6]
+
+        if f[2] > 0
+           select_i = Int(f[2])
+           Rijmat = Rijmat[:, ijmat[1,:] .== select_i]
+           Bondint = Bondint[:, ijmat[1,:] .== select_i]
+           ijmat = ijmat[:, ijmat[1,:] .== select_i]
+        end
 
         for i in 1:size(Bondint,2)
             R0 = SVector(Rijmat[:,i]...)

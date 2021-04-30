@@ -87,10 +87,6 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
        end
     end
   
-    #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
-    #Rt = get_i_neighs(1, natoms, coords, nnei, inei)
-    #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
-    
     Threads.@threads for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -111,33 +107,12 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
           ix = ipair[jn]
           iy = ix + norbs[isp] * norbs[jsp]
           ix += 1
-          #R0 =  Rt[ia][nj] 
           R0 =  SVector((coords[:,ja] - coords[:,ia])...)
           if cutoff < norm(R0)
              continue
           end
 
           # Predictions
-          #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
-          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
-          #if(MPIproc == 1)
-          #   Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
-          #   jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
-          #end
-          #Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
-          #if(MPIproc == 1)
-          #   for j1 in jlist
-          #      if j1 ∉ jlist2
-          #         println("ia: ",ia," ja: ",ja," j1: ",j1)
-          #      end
-          #   end
-          #   for j2 in jlist2
-          #      if j2 ∉ jlist
-          #          println("ia: ",ia," ja: ",ja," j2: ",j2)
-          #      end
-          #   end
-          #end
-          
           Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
 
@@ -187,6 +162,9 @@ function buildHS_dftb_neigh(SKH_list, H, S, istart, iend, norbs, onsite_terms, B
     end
   
     Rt = get_i_neighs(1, length(acetb_dct["julip_atoms"]), coords, nnei, inei)
+    #Rt = get_all_neighs(acetb_dct["natoms"], coords, nnei, inei)
+    #Rt = get_i_neighs(1, natoms, coords, nnei, inei)
+    #Rt, jt = get_i_neighs_j(istart, iend, coords, nnei, inei)
     
     Threads.@threads for ia = istart:iend
        isp = species[ia]
@@ -214,6 +192,25 @@ function buildHS_dftb_neigh(SKH_list, H, S, istart, iend, norbs, onsite_terms, B
           end
 
           # Predictions
+          #Renv = get_env_neighs(vcat(Rt[ia],.-Rt[i2a[ja]]), R0, cutoff_func)
+          #Renv = get_env_neighs(Rt[ia], R0, cutoff_func)
+          #if(MPIproc == 1)
+          #   Renv2, jl2 = get_env_neighs_j(Rt[ia], R0, cutoff_func)
+          #   jlist2 = [ i2a[jt[ia][jj]] for jj in jl2 ]
+          #end
+          #Renv, jlist = get_env_j(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
+          #if(MPIproc == 1)
+          #   for j1 in jlist
+          #      if j1 ∉ jlist2
+          #         println("ia: ",ia," ja: ",ja," j1: ",j1)
+          #      end
+          #   end
+          #   for j2 in jlist2
+          #      if j2 ∉ jlist
+          #          println("ia: ",ia," ja: ",ja," j2: ",j2)
+          #      end
+          #   end
+          #end
           
           Renv = get_env(acetb_dct["julip_atoms"], R0, ia, cutoff_func)
           VV = Bondint_table(R0,Renv)
@@ -322,8 +319,6 @@ function set_model(natoms, nspecies,
         global acetb_dct["origin"] = origin[:]
         global acetb_dct["norbe"] = norbe
     
-        println(size(tcells))
-
         elm_names = get_specie_name(specienames, lstr, nspecies)
         global acetb_dct["elm_names"] = elm_names[:]
         
@@ -460,10 +455,6 @@ function model_predict(iatf, iatl, natoms,
         norbe = acetb_dct["norbe"]
         if(MPIproc == 1)
             @info "│    Calculating bond integrals..."
-            println(size(nneigh))
-            println(size(ineigh))
-            println(size(ipair))
-            println(size(pos))
         end
         if predict_params == 0
            buildHS_test(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)

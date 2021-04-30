@@ -140,10 +140,11 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
       @info "│    setting BI function."
    end
    function BIfunc(R0,Renv)
-       Rs = [[R0]; Renv]
-       Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
-       z0 = AtomicNumber(:X)
-      return [dot(c[:,i],eval_bond(basis, Rs, Zs, z0)[b_index]) for i in 1:nbonds]
+      Rs = [[R0]; Renv]
+      Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
+      z0 = AtomicNumber(:X)
+      B = eval_bond(basis, Rs, Zs, z0)[b_index]
+      return [dot(c[:,i], B) for i in 1:nbonds]
    end
    if(MPIproc == 1)
       @info "│    return BI function."
