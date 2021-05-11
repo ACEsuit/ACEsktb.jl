@@ -22,6 +22,33 @@ orbitals = ["s", "s", "s", "p", "p", "d"]
 SKorbs = SKH([SKOrbitals(o) for o in orbitals])
 ```
 
-In above definition, two functions are 
+## Generating Hamiltonian `H` and Overlap Matrix `S` in ACEtb.
+
+The main function that is used to generate Hamiltonian and overlap is `buildHS`.
+
+```
+buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, i2a, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
+```
+
+The arguements of the functions are defined as follows:
+
+- SKH_list : SlaterKoster orbital list such as s-s, s-p, p-p but also includes sigma and pi orbital definitions in the same order as in H and S.
+- H : 1D flattened Hamiltonian matrix
+- S : 1D flattened overlap matrix
+- iatf : index of first atom (Ex.:iatf=1)
+- iatl : index of last atom (Ex.:iatl=729)
+- natoms : Total number of atoms in configuration
+- pos : positions of atoms (729 x 3)
+- species : element type list for each atom in pos.
+- nneigh : the array of the number of neighbours for each atom "i" (1D array).
+- ineigh : the array of the neighbouring atom ids ("j") for each atom "i" (1D array).
+- ipair : the index where we need to write the Hamiltonian values that correspond to an atom pair.
+- i2a : index of atom in pos, species array to actual atom element type.
+- norbe : number of orbitals for each element type.
+- onsite_terms : the onsite block's diagonal hamiltonian elements.
+- Bondint_table : The function for ACEtb model that holds bond integral predictions. 
+- cutoff_func : The cut off function for ACEtb model.
+- cutoff : The cut off distance in Angstrom.
+- MPIproc : If it is 1, the running process is the leading process in DFTB+ MPI parallelisation.
 
 
