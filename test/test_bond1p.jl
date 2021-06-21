@@ -79,9 +79,9 @@ for x in xgr, y in ygr
 end
 
 vplot = [V[k][9] for k in 1:length(V)]
-using Plots
-scatter(X,Y, marker_z = vplot, color = :jet, clims = (-0.7, 0.7))
-plot!([0.0, r0], [0.0, 0.0], lw=4, m=:o, ms=6, c=:red, label = "")
+#using Plots
+#scatter(X,Y, marker_z = vplot, color = :jet, clims = (-0.7, 0.7))
+#plot!([0.0, r0], [0.0, 0.0], lw=4, m=:o, ms=6, c=:red, label = "")
 # #---
 # minimum(abs.(vplot))
 # maximum(abs.(vplot))

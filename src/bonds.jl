@@ -4,6 +4,7 @@ module Bonds
 
 using ACE, JuLIP, NeighbourLists
 using LinearAlgebra: norm, dot
+using StaticArrays
 
 using JuLIP.Potentials: neigsz!
 using JuLIP: evaluate
@@ -12,6 +13,7 @@ import JuLIP: cutoff, write_dict, read_dict, evaluate!
 import JuLIP.Potentials: zlist, z2i, alloc_temp, numz, z2i, i2z
 import ACE: get_basis_spec, fltype, rfltype, OneParticleBasis, add_into_A!
 import Base: ==, length
+using ACE: z2i, i2z
 
 
 # ------------------------------------------------------
@@ -53,7 +55,7 @@ BondCutoff(; r0 = nothing, pcut = 2,
    BondCutoff(pcut, rcut, renv, zenv)
 
 # cutoff for the bond
-fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
+@inline fcut(cut::BondCutoff, R) = ((norm(R)/cut.rcut)^2 - 1)^cut.pcut*(norm(R)<=cut.rcut)
 
 function fenv(cut::BondCutoff, R, R0)
    z, r = _get_zr(R, R0)
@@ -63,13 +65,143 @@ function fenv(cut::BondCutoff, R, R0)
           ((r/cut.renv)^2 - 1)^cut.pcut * (r<=cut.renv)
 end
 
-function _get_zr(R, R0)
+@inline function _get_zr(R, R0)
    R̂0 = R0/norm(R0)
    o = R0/2
    z = dot(R - o, R̂0)
    r = norm(R - o - z * R̂0)
    # r = norm(R-o)
    return z, r
+end
+
+function get_i_neigh_Rs(i, coords, nnei, inei)
+   Rt = [] # holds neighbours of atom i
+   offset = i == 1 ? 0 : sum(nnei[1:i-1])
+   for nj = 1:nnei[i]
+      jn = offset + i + nj
+      j = inei[jn]
+      Rij =  SVector((coords[:,j] - coords[:,i])...)
+      push!(Rt,Rij)
+   end
+   return Rt
+end
+
+function get_i_neighs(istart, iend, coords, nnei, inei)
+   Rt = []
+
+   for ia = istart:iend
+      Rij = []
+      offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
+      for nj = 1:nnei[ia]
+         jn = offset + ia + nj
+         ja = inei[jn]
+         R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+         push!(Rij,R0)
+      end
+      push!(Rt,Rij)
+   end
+   return Rt
+end
+
+function get_i_neighs_j(istart, iend, coords, nnei, inei)
+   Rt = []
+   jt = []
+
+   for ia = istart:iend
+      Rij = []
+      jj = []
+      offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
+      for nj = 1:nnei[ia]
+         jn = offset + ia + nj
+         ja = inei[jn]
+         R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+         push!(Rij,R0)
+         push!(jj,ja)
+      end
+      push!(Rt,Rij)
+      push!(jt,jj)
+   end
+   return Rt, jt
+end
+
+function get_all_neighs(natoms, coords, nnei, inei)
+   Rt = []
+
+   for ia = 1:natoms
+      Rij = []
+      offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
+      for nj = 1:nnei[ia]
+         jn = offset + ia + nj
+         ja = inei[jn]
+         R0 =  SVector((coords[:,ja] - coords[:,ia])...)
+         push!(Rij,R0)
+      end
+      push!(Rt,Rij)
+   end
+   return Rt
+end
+
+function get_env_neighs(Rt, R0, cut::BondCutoff)
+   Renv = []
+   # condition on the bond length
+   normR0 = norm(R0)
+   if normR0 <= cut.rcut
+      rmax = sqrt((normR0+abs(cut.zenv))^2 + (cut.renv)^2)
+      for R in Rt
+         if (norm(R)<=rmax)&&(norm(R-R0) > 1e-10)
+            z, r = _get_zr(R, R0)
+            if (z<= cut.zenv)&&(r<=cut.renv)
+               push!(Renv,R)
+            end
+         end
+      end
+   end
+   return Renv
+end
+
+function get_env_neighs_j(Rt, R0, cut::BondCutoff)
+   Renv = []
+   jenv = []
+   # condition on the bond length
+   normR0 = norm(R0)
+   if normR0 <= cut.rcut
+      rmax = sqrt((normR0+abs(cut.zenv))^2 + (cut.renv)^2)
+      for (j, R) in enumerate(Rt)
+         if (norm(R)<=rmax)&&(norm(R-R0) > 1e-10)
+            z, r = _get_zr(R, R0)
+            if (z<= cut.zenv)&&(r<=cut.renv)
+               push!(Renv,R)
+               push!(jenv,j)
+            end
+         end
+      end
+   end
+   return Renv, jenv
+end
+
+function get_env_j(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
+   Renv = []
+   jenv = []
+   # condition on the bond length
+   if norm(R0) <= cut.rcut
+      if nlist == nothing
+         rmax = sqrt((norm(R0)+abs(cut.zenv))^2 + (cut.renv)^2)
+         nlist = neighbourlist(at, rmax)
+      end
+      maxR = maxneigs(nlist)
+      tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(AtomicNumber, maxR))
+      j, Rt, Z = neigsz!(tmpRZ, nlist, at, i)
+      for (jn, R) in enumerate(Rt)
+         if norm(R-R0) > 1e-10
+            z, r = _get_zr(R, R0)
+            if (z<= cut.zenv)&&(r<=cut.renv)
+               push!(Renv,R)
+               push!(jenv,j[jn])
+            end
+         end
+      end
+   end
+   return Renv, jenv
 end
 
 function get_env(at::AbstractAtoms{T}, R0, i, cut::BondCutoff; nlist = nothing) where {T}
@@ -103,25 +235,25 @@ function eval_bond(B, Rs, Zs, z0)
    return evaluate(B, Rs, Zs, z0) + evaluate(B, Rr, Zs, z0)
 end
 
-function get_basis(order, degree, Fcut)
+function get_basis(order, degree, Fcut; Deg = nothing)
     # Create a basis with cylindrical symmetry start with a
     # standard ACE basis
-    if order == 0
-        B = ACE.Utils.ace_basis( species = [:X, :Al], N = 1,
-                                 pin = 0, pcut = 0, maxdeg = degree)
-
-    else
-        B = ACE.Utils.ace_basis( species = [:X, :Al], N = order,
-                                 pin = 0, pcut = 0, maxdeg = degree)
+    if Deg == nothing
+       Dn = Dict( "default" => 1.,)
+       Dl = Dict( "default" => 1.,)
+       Dd = Dict( "default" => 1.,)
+       Deg = ACE.RPI.SparsePSHDegreeM(Dn, Dl, Dd)
     end
+    B = ACE.Utils.ace_basis( species = [:X, :Al], N = order,
+                                 pin = 0, pcut = 0,
+                                 maxdeg = degree,
+                                 D = Deg)
     # convert the radial ACE basis into a cylindrical ACE basis.
     Bbonds = RPIBonds(B, Fcut)
-    if order == 0
-        basis_index = collect(1:Int(length(Bbonds)/4))
-    else
-        basis_index = collect(1:Int(length(Bbonds)/2))
-    end
-    return Bbonds, basis_index
+    iX = z2i(B, AtomicNumber(:X))
+    # b_index = B.pibasis.inner[iX].AAindices
+    b_index = B.Bz0inds[1]
+    return Bbonds, b_index
 end
 
 
@@ -133,7 +265,7 @@ write_dict(basis::BondCutoff) = Dict(
             "zenv" => basis.zenv )
 
 read_dict(::Val{:ACEtb_BondCutoff}, D::Dict) =
-   Bond1pBasis(D["pcut"], D["rcut"], D["renv"], D["zenv"])
+   BondCutoff(D["pcut"], D["rcut"], D["renv"], D["zenv"])
 
 
 # ------------ Main Object - Bond1pBasis
@@ -165,7 +297,7 @@ cutoff(basis::Bond1pBasis) = cutoff(basis.ace)
 length(basis::Bond1pBasis, args...) = length(basis.ace, args...)
 get_basis_spec(basis::Bond1pBasis, args...) = get_basis_spec(basis.ace, args...)
 
-==(P1::Bond1pBasis, P2::Bond1pBasis) = (P1.ace == P2.ace) && (P1.fenv == P2.fenv)
+==(P1::Bond1pBasis, P2::Bond1pBasis) = (P1.ace == P2.ace) && (P1.fcut == P2.fcut)
 
 write_dict(basis::Bond1pBasis) = Dict(
          "__id__" => "ACEtb_Bond1pBasis",
@@ -215,10 +347,14 @@ function evaluate!(A, tmp, basis::Bond1pBasis{TACE},
       iz = z2i(basis, Z)
       fill!(P, 0)
       add_into_A!(P, tmp.tmpace, basis.ace, R, iz, iz0)
-      Av = (@view A[basis.ace.Aindices[iz, iz0]])
+
       fenv_ = fenv(basis.fcut, R, Rbond)
-      @. Av[:] += fenv_ * P
-      # @. Av[:] += P
+      i0 = basis.ace.Aindices[iz, iz0][1]-1
+      # this used to be a broadcase but for some reason that was a huge
+      # bottleneck...
+      @simd for n = 1:length(P)
+         @inbounds A[i0+n] += fenv_ * P[n]
+      end
    end
    return A
 end

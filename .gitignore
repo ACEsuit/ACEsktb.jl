@@ -1,1 +1,3 @@
 Manifest.toml
+*sktable.json
+*__pycache__/
