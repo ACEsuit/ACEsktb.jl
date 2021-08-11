@@ -34,15 +34,26 @@ jobs:
     - name: Setup Julia environment
       uses: julia-actions/setup-julia@latest
       with:
-        # The Julia version to download (if necessary) and use.
-        version: 1.5
-        # Display InteractiveUtils.versioninfo() after installing
+        version: 1.6
         show-versioninfo: true # optional, default is false
-    - run: |
-        using InteractiveUtils; versioninfo()
-        using Pkg
-        Pkg.pkg"update"
-        Pkg.pkg"registry add https://github.com/JuliaMolSim/MolSim.git"
-        Pkg.activate(".")
-        Pkg.test("ACEtb")
-      shell: bash -c "julia --color=yes {0}"
+    - name: Add MolSim registry
+      run: julia -e 'using Pkg; pkg"registry add https://github.com/JuliaMolSim/MolSim.git"'
+    - uses: actions/cache@v1
+      env:
+        cache-name: cache-artifacts
+      with:
+        path: ~/.julia/artifacts
+        key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-test-${{ env.cache-name }}-
+          ${{ runner.os }}-test-
+          ${{ runner.os }}-
+    - uses: julia-actions/julia-buildpkg@v1
+    - uses: julia-actions/julia-runtest@v1  
+    - name: Install docs dependencies
+      run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+    - name: Build and deploy docs
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CI: 1
+      run: julia --project=docs/ docs/make.jl      

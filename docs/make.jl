@@ -17,7 +17,7 @@ makedocs(sitename="ACEtb.jl Documentation",
         "Developer Docs" => "devel.md"
         ])
 
-# deploydocs(
-#     repo = "github.com/ACEsuit/ACEtb.jl.git",
-# )
+deploydocs(
+    repo = "github.com/ACEsuit/ACEtb.jl.git",
+)
 
