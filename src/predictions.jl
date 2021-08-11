@@ -6,6 +6,9 @@ using ACEtb.Bonds: BondCutoff, get_env, eval_bond, get_basis, read_dict, write_d
 using ACEtb.Utils: get_data, read_json, write_json
 using JSON
 using IterativeSolvers
+using LowRankApprox: pqrfact
+
+using Infiltrator
 
 export predict, train_and_predict
 
@@ -46,6 +49,8 @@ function train_and_predict(filenames, specie_syms, cutoff_params, fit_params; MP
     degree = fit_params["degree"]
     order = fit_params["order"]
     env_deg = fit_params["env_deg"]
+    rtol = get(fit_params, "rtol", 1e-15)
+    method = Symbol(get(fit_params, "method", "QR"))
     cutfunc = BondCutoff(pcut, rcut, renv, zenv)
     if(MPIproc == 1)
        @info "│    Getting data..."
@@ -54,7 +59,8 @@ function train_and_predict(filenames, specie_syms, cutoff_params, fit_params; MP
     if(MPIproc == 1)
        @info "│    fitting BI..."
     end
-    BII, train_dict = fit_BI(data_train, specie_syms, order, degree, env_deg, cutfunc; test = nothing, MPIproc=MPIproc)
+    BII, train_dict = fit_BI(data_train, specie_syms, order, degree, env_deg, cutfunc; 
+                             test = nothing, MPIproc=MPIproc, rtol=rtol, method=method)
     return BII, cutfunc, train_dict
 end
 
@@ -95,7 +101,8 @@ function load_BI(poten_dict; test = nothing, MPIproc=1)
    return BIfunc
 end
 
-function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = nothing, MPIproc=1)
+function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; 
+                test = nothing, MPIproc=1, rtol=1e-15, method=:QR)
    if(MPIproc == 1)
       @info "│    setting degreeM."
    end
@@ -108,8 +115,8 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
       @info "│    basis function is set."
    end
    nbonds = length(train[1][3])
-   A = zeros(ComplexF64, (length(train), length(b_index)))
-   y = zeros(ComplexF64, (length(train), nbonds))
+   A = zeros((length(train), length(b_index)))
+   y = zeros((length(train), nbonds))
    for (i, (R0, Renv, V)) in enumerate(train)
      Rs = [[R0]; Renv]
      Zs = [[AtomicNumber(:X)];[AtomicNumber(Symbol(specie_syms[1])) for _ = 1:length(Renv)]]
@@ -117,20 +124,45 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc; test = noth
      A[i, :] = eval_bond(basis, Rs, Zs, z0)[b_index]
      y[i, :] = V
    end
-   if(MPIproc == 1)
-      @info "│    Solving LSQ..."
-   end
-   c = qr(A) \ y
+   train_dict = Dict()
+   if method == :QR
+      if(MPIproc == 1)
+         @info "│    Solving LSQ with QR ..."
+      end   
+      qrA = qr(A)
+      c = qrA \ y
 
+   elseif method == :RRQR
+      if(MPIproc == 1)
+         @info "│    Solving LSQ with RRQR rtol=$rtol..."
+      end   
+      qrA = pqrfact(A, rtol=rtol)
+      c = qrA \ y
+
+   elseif method == :RegRRQR
+      if(MPIproc == 1)
+         @info "│    Solving LSQ with regularised RRQR rtol=$rtol..."
+      end
+      Γ = ACEtb.Bonds.scaling(basis, cutfunc.pcut)[b_index]
+      Areg = A * Diagonal( 1 ./ Γ )
+      qrAreg = pqrfact(Areg, rtol=rtol)
+      c = Diagonal(1 ./ Γ) * (qrAreg \ y)
+
+      train_dict["rank_qrAreg"] = qrAreg[:k]
+      train_dict["abs_err_Areg"] = snormdiff(qrAreg, Areg)
+      train_dict["rel_err_Areg"] = train_dict["abs_err_Areg"] / snorm(Areg)
+   else
+      error("unknown method $method")
+   end
    if(MPIproc == 1)
       @info "│    set dict."
    end
-   train_dict = Dict()
    train_dict["size_A"] = size(A)
    train_dict["cond_A"] = cond(A)
    train_dict["rank_A"] = rank(A)
-   train_dict["c"] = real.(c)
-   train_dict["error_train"] = norm(A*c-y)
+   train_dict["c"] = c
+   train_dict["error_train"] = norm(A*c - y)
+   train_dict["error_train_rel"] = train_dict["error_train"] / norm(y)
    train_dict["basis"] = JSON.json(write_dict(basis))
    train_dict["basis_index"] = b_index
    train_dict["nbonds"] = nbonds

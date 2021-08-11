@@ -8,7 +8,7 @@ using ACEtb.Bonds: BondCutoff, get_env, get_env_j, get_env_neighs, get_env_neigh
 using ACEtb.SlaterKoster
 import ACEtb.SlaterKoster.CodeGeneration
 using ACEtb.SlaterKoster: sk2cart
-using ACEtb.Utils: read_json, write_json
+using ACEtb.Utils: read_json, write_json, h5read_SK
 using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
 using ProgressMeter
@@ -385,7 +385,7 @@ function set_model(natoms, nspecies,
                 global Bondint_table = Bint_table
                 global cutoff_func = cutf_func
                 if(MPIproc == 1)
-                    @info "│    Model is load."
+                    @info "│    Model is loaded."
                 end
             end
         else
@@ -417,7 +417,7 @@ function set_model(natoms, nspecies,
         end
     end
     if(MPIproc == 1)
-        @info "└── ACEtb : Done at Julia module."
+        @info "└── ACEtb : Done in Julia module."
     end
     flush(stdout)
 end
@@ -474,7 +474,7 @@ function model_predict(iatf, iatl, natoms,
         end
     end
     if(MPIproc == 1)
-        @info "└── ACEtb : Done at Julia module."
+        @info "└── ACEtb : Done in Julia module."
     end
     flush(stdout)
 end

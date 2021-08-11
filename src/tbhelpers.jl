@@ -1,5 +1,6 @@
 module TBhelpers
 
+using JuLIP
 using LinearAlgebra
 using ACEtb.SlaterKoster
 

@@ -21,4 +21,10 @@ include("predictions.jl")
 include("bindings.jl")
 @reexport using ACEtb.Bindings
 
+include("fittools.jl")
+@reexport using ACEtb.FitTools
+
+include("analysistools.jl")
+@reexport using ACEtb.AnalysisTools
+
 end

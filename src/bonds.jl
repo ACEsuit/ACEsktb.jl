@@ -256,6 +256,16 @@ function get_basis(order, degree, Fcut; Deg = nothing)
     return Bbonds, b_index
 end
 
+function scaling(basis, p; a2b = abs2, fin = (a2b == abs2 ? sqrt : identity) )
+   wwpi = ACE.scaling(basis.pibasis, p)
+   wwrpi = zeros(Float64, length(basis))
+   for iz0 = 1:ACE.numz(basis.pibasis)
+      wwpi_iz0 = wwpi[basis.pibasis.inner[iz0].AAindices]
+      wwrpi[basis.Bz0inds[iz0]] = a2b.(basis.A2Bmaps[iz0]) * a2b.(wwpi_iz0)
+   end
+   return fin.(wwrpi)
+end
+
 
 write_dict(basis::BondCutoff) = Dict(
          "__id__" => "ACEtb_BondCutoff",
