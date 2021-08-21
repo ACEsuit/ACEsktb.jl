@@ -18,10 +18,10 @@ struct FitContext
     param_basename::String
 end
 
-function make_params(mode::Symbol, training_datasets, test_datasets; rcut=12, 
+function make_params(mode::Symbol, training_datasets, test_datasets, onsite_terms; rcut=12, 
     renv=3, zenv=1, deg=5, order=2, 
     envdeg=4, pcut=1, unitcell=false, 
-    method=:QR, rtol=1e-15)
+    method=:QR, rtol=1e-15, HS_datasets=String[])
 
     if mode == :fit
         predict = 1
@@ -29,13 +29,21 @@ function make_params(mode::Symbol, training_datasets, test_datasets; rcut=12,
     elseif mode == :predict
         predict = 1
         fit = 0
+    elseif mode == :exact
+        predict = 0
+        fit = 0
     else
         error("mode should be either :fit or :predict")
+    end
+
+    if onsite_terms isa String
+        onsite_terms = JSON.parsefile(onsite_terms)
     end
 
     param_dict = Dict(
         "training_datasets" => training_datasets,
         "test_datasets" => test_datasets,
+        "HS_datasets" => HS_datasets,
         "model" => Dict(
                 "predict" => predict,
                 "fit" => fit,
@@ -50,23 +58,7 @@ function make_params(mode::Symbol, training_datasets, test_datasets; rcut=12,
                     "env_deg" => envdeg,
                     "method" => method,
                     "rtol" => rtol)),
-        "onsite-terms" => Dict(
-        "Al" => [
-            -5.5708730114137865e+01,
-            -4.0432979354580754e+00,
-            -4.9611320942331338e-01,
-            -2.6243905672312331e+00,
-            -2.6243905672300967e+00,
-            -2.6241786637179012e+00,
-            -4.6415677514380915e-01,
-            -4.6415677508608638e-01,
-            -4.6415677490900636e-01,
-            -2.8478483849360947e-01,
-            -2.8478483839241397e-01,
-            -2.8478483828616641e-01,
-            -1.8885840374342641e-01,
-            -1.8885840355491695e-01
-        ]))
+        "onsite-terms" => onsite_terms)
     return param_dict, params_to_string(param_dict)
 end
 
@@ -113,8 +105,8 @@ function test_error(test, Bint_table)
     return errors
 end
 
-function fit_model(fc::FitContext, params::Dict, training_datasets, test_datasets; band_errors=true)
-    pot_dict, param_hash = make_params(:fit, training_datasets, test_datasets; params...)
+function fit_model(fc::FitContext, params::Dict, training_datasets, test_datasets, onsite_terms; band_errors=true)
+    pot_dict, param_hash = make_params(:fit, training_datasets, test_datasets, onsite_terms; params...)
     pot_dir = joinpath(fc.output_dir, "pot_" * param_hash)
     pot_file = joinpath(pot_dir, "pot.json")
 
@@ -136,7 +128,8 @@ function fit_model(fc::FitContext, params::Dict, training_datasets, test_dataset
         # compute test error on independent set
         test_dataset = pot_dict["test_datasets"]
         test_data = ACEtb.Utils.get_data(test_dataset, cutf_func, get_env)
-        pot_dict["test_error_all"] = test_error(test_data, Bint_table)
+        test_error_all = test_error(test_data, Bint_table)
+        pot_dict["test_error_all"] = test_error_all
         pot_dict["test_error"] = norm(test_error_all)
         @info "Test error $(pot_dict["test_error"])"
     end

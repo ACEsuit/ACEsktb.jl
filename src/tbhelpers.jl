@@ -29,12 +29,12 @@ function set_SK_orbitals(ntypes,nshells,orblist)
 end
 
 function find_row_in_matrix(row, mat; round_digits=nothing)
-    if round_digits != nothing
+    if round_digits !== nothing
         row = round.(row, digits=round_digits)
     end
     rtn = []
     for i=1:size(mat,1)
-        if round_digits != nothing
+        if round_digits !== nothing
             matrow = round.(mat[i,:], digits=round_digits)
         else
             matrow = mat[i,:]
@@ -108,7 +108,7 @@ function get_R(atoms, i, j; cell_vec=nothing)
     # @show i,j
     pos = positions(atoms)
     # @show pos
-    if cell_vec != nothing
+    if cell_vec !== nothing
         c = cell(atoms)
         return pos[j] + (c * cell_vec) - pos[i]
     else
@@ -144,7 +144,7 @@ function wrap_shift(shift, mesh)
     for a = 1:length(shift)
         if shift[a] < - m[a]
             shift[a] += mesh[a]
-        elseif a > m[a]
+        elseif shift[a] > m[a]
             shift[a] -= mesh[a]
         end
     end
