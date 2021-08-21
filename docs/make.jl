@@ -19,5 +19,6 @@ makedocs(sitename="ACEtb.jl Documentation",
 
 deploydocs(
     repo = "github.com/ACEsuit/ACEtb.jl.git",
+    devbranch = "main"
 )
 
