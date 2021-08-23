@@ -1,0 +1,45 @@
+Geometry = GenFormat {
+    1  F
+ Al
+    1 1    0.0000000000E-00    0.0000000000E-00    0.0000000000E-00
+    0.0000000000E+00    0.0000000000E+00    0.0000000000E+00
+   -1.6450000000E-00    1.6450000000E+00    1.6450000000E+00
+    1.6450000000E+00   -1.6450000000E-00    1.6450000000E+00 
+    1.6450000000E+00    1.6450000000E+00   -1.6450000000E-00 
+}
+
+Hamiltonian = ACETB {
+  Scc = No
+  ModelFiles = Type2FileNames {
+    Prefix = ""
+    Separator = "-"
+    Suffix = ".acetb.json"
+  }
+  Masses {
+    Mass {
+      Atoms = Al
+      MassPerAtom [amu] = 26.981539
+    }
+  }
+  SKCutOff [AA] = 12.0
+  MaxAngularMomentum {
+    Al = SelectedShells { "s" "s" "s" "p" "p" "d" }
+  }
+  CustomisedOccupations{ 
+    ReferenceOccupation{
+      Atoms={1}
+      s=2.0 
+      s2=2.0 
+      s3=2.0 
+      p=6.0 
+      p2=1.0 
+      d=0.0 
+    }
+  }
+  KPointsAndWeights = SupercellFolding {
+    9 0 0
+    0 9 0
+    0 0 9
+    0.0 0.0 0.0
+  }
+}

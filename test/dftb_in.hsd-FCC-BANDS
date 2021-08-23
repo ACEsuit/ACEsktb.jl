@@ -1,0 +1,54 @@
+Geometry = GenFormat {
+    1  F
+ Al
+    1 1    0.0000000000E-00    0.0000000000E-00    0.0000000000E-00
+    0.0000000000E+00    0.0000000000E+00    0.0000000000E+00
+    0.0000000000E-00    2.0250000000E+00    2.0250000000E+00
+    2.0250000000E+00    0.0000000000E-00    2.0250000000E+00 
+    2.0250000000E+00    2.0250000000E+00    0.0000000000E-00 
+}
+
+Hamiltonian = ACETB {
+  Scc = No
+  ModelFiles = Type2FileNames {
+    Prefix = ""
+    Separator = "-"
+    Suffix = ".acetb.json"
+  }
+  Masses {
+    Mass {
+      Atoms = Al
+      MassPerAtom [amu] = 26.981539
+    }
+  }
+  SKCutOff [AA] = 12.0
+  MaxAngularMomentum {
+    Al = SelectedShells { "s" "s" "s" "p" "p" "d" }
+  }
+  CustomisedOccupations{ 
+    ReferenceOccupation{
+      Atoms={1}
+      s=2.0 
+      s2=2.0 
+      s3=2.0 
+      p=6.0 
+      p2=1.0 
+      d=0.0 
+    }
+  }
+  KPointsAndWeights = Klines {
+    0   0.500  0.250  0.750  # W
+    6   0.500  0.000  0.500  # X
+   11   0.000  0.000  0.000  # G
+   10   0.500  0.500  0.500  # L
+    7   0.375  0.375  0.750  # K
+   14   0.000  0.000  0.000  # G
+   12   0.500  0.500  0.500  # L
+  }
+  Filling = MethfesselPaxton{
+     Order = 1
+     Temperature [K] = 0
+     FixedFermiLevel = -0.2305206611
+  }
+  Solver = QR{}
+}
