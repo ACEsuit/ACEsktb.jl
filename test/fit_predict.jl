@@ -1,13 +1,13 @@
 using Random
 using JSON
 
-ENV["PYTHONPATH"] = "$(@__DIR__)/../dftbplus/build/install/lib/python3.7/site-packages/"
+ENV["PYTHONPATH"] = "$(homedir())/lib_acetb/dftbplus/build/install/lib/python3.7/site-packages/"
 ENV["JULIA_PROJECT"] = "$(@__DIR__)"
 
-const DFTB_PATH = "$(@__DIR__)/../dftbplus/build/install/bin/"
-const OUTPUT_DIR = joinpath(@__DIR__, "Results_fits/")
-const DATABCC = "/home/eng/essswb/ownCloud/SK_AITB/BCC/without_HS/MD-20K"  #"data/BCC_MD_20K/MD-20K"
-const DATAFCC = "/home/eng/essswb/ownCloud/SK_AITB/FCC/without_HS/MD-500K/"  #"data/FCC_MD_500K/MD-500K"
+const DFTB_PATH = "$(homedir())/lib_acetb/dftbplus/build/install/bin/"
+const OUTPUT_DIR = joinpath(@__DIR__, "fits/")
+const DATABCC = "data/BCC/"
+const DATAFCC = "data/FCC/"
 const PARAM_FILE = "Al-Al.acetb.json"
 
 # always include lattice expansion data?
@@ -28,18 +28,22 @@ params = Dict(
     :rtol => 1e-8
 )
 
-bcc_files = readlines(pipeline(`find $DATABCC -name \*.h5`))
-fcc_files = readlines(pipeline(`find $DATAFCC -name \*.h5`))
+bcc_files = readlines(pipeline(`find -L $DATABCC -name SK-supercell-\*.h5`))
+fcc_files = readlines(pipeline(`find -L $DATAFCC -name SK-supercell-\*.h5`))
 bcc_data = reshape([ (file, index) for file in bcc_files, index in 1:729 ], :)
 fcc_data = reshape([ (file, index) for file in fcc_files, index in 1:729 ], :)
 all_data = [bcc_data; fcc_data]
 
+@info "Found $(length(bcc_data)) FCC and $(length(fcc_data)) FCC atomic environments"
+
 if !isfile("train_test.json")
+    @info "Generating train/test split..."
     perm = randperm(length(all_data))
     open("train_test.json", "w") do json_file
         JSON.print(json_file, perm)
     end
 else
+    @info "Loading train/test split"
     perm = JSON.parsefile("train_test.json")
 end
 train = perm[1:length(perm)÷2]
@@ -57,5 +61,5 @@ N_test = 100
 model, param_hash, Bint_table, cutf_func = fit_model(fc, cparams, 
                                                      training_data[1:N_train], 
                                                      test_data[1:N_test],
-                                                     "exact-onsite-BCC.json")
+                                                     "data/exact-onsite-BCC.json")
 
