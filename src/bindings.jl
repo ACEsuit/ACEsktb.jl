@@ -38,7 +38,7 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
     end
     invcell = inv(cell)
     mesh = [9, 9, 9]
-    central_atom = prod(mesh) ÷ 2 + 1
+    central_atom = prod(mesh) ÷ 2 + 1 # atom 365 for the 9×9×9=729 atom dataset
     rcn = get_tbcells(supercell_atoms, invcell, mesh, central_atom)
 
     for ia = istart:iend
@@ -49,8 +49,8 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
        nno = norbs[isp] * norbs[isp]
        shift = convert(Array{Int64,1}, [0,0,0])
        cid = find_row_in_matrix(shift, rcn)
-       @show HH[cid,:,:]
-       @show SS[cid,:,:]
+      #  @show HH[cid,:,:]
+      #  @show SS[cid,:,:]
        H[io : io + nno - 1] = vcat(HH[cid,:,:]...)
        S[io : io + nno - 1] = vcat(SS[cid,:,:]...)
 
@@ -413,15 +413,14 @@ function set_model(natoms, nspecies,
             end
             HSfile = filedata["HS_datasets"][1]
             if(MPIproc == 1)
-                @info "│    Reading saved H,S file:", HSfile
+                @info "│    Reading saved H,S file:" HSfile
             end
             HSdata = h5read_SK(HSfile; get_HS=true, get_atoms=true, get_metadata=true, get_energies=true)
             global saveh5_HH = permutedims(HSdata[2][1], [3, 2, 1])
             global saveh5_SS = permutedims(HSdata[2][2], [3, 2, 1])
             global saveh5_satoms = HSdata[6]
             write_extxyz("saveh5_satoms.xyz", saveh5_satoms)
-            @show length(saveh5_satoms)
-            @show size(saveh5_HH)
+
             if(MPIproc == 1)
                @info "│    Setting H,S is done."
             end
@@ -475,20 +474,17 @@ function model_predict(iatf, iatl, natoms,
         onsite_terms = [onsite_vals[elm_names[species[a]]] for a=1:natoms]
 
         norbe = acetb_dct["norbe"]
-        @show norbe
         onsite_H = Dict{Int}{Vector{Float64}}()
         onsite_S = Dict{Int}{Vector{Float64}}()
         for isp = 1:nspecies
             sp = elm_names[species[isp]]
             if onsite_vals[sp] isa AbstractVector
-               MPIproc == 1 && @info "Using $(norbe[isp]) element diagonal onsite approximation for species $sp"
+               MPIproc == 1 && @info "│    Using $(norbe[isp]) element diagonal onsite approximation for species $sp"
                @assert length(onsite_vals[sp]) == norbe[isp]
-               onsite_H[isp] = reshape(diagm(Vector{Float64}(onsite_vals[sp])), :)
+               onsite_H[isp] = reshape(diagm(Float64.(onsite_vals[sp])), :)
                onsite_S[isp] = reshape(1.0*I(norbe[isp]) |> Matrix, :)
             elseif onsite_vals[sp] isa AbstractDict
-               MPIproc == 1 &&  @info "Using $(norbe[isp]) × $(norbe[isp]) onsite block for species $sp"
-               @show size(onsite_vals[sp]["H"]), (norbe[isp], norbe[isp])
-               @show onsite_vals[sp]["H"]
+               MPIproc == 1 && @info "│    Using $(norbe[isp]) × $(norbe[isp]) onsite block for species $sp"
                onsite_H[isp] = vcat(onsite_vals[sp]["H"]...)
                onsite_S[isp] = vcat(onsite_vals[sp]["S"]...)
             else
