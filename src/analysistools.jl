@@ -12,7 +12,7 @@ using ACEtb.FitTools
 
 export plot_bands, plot_bands!, tabulate_results, comp_plot
 
-function plot_bands(fc::FitContext, phase::Symbol, fermi_level::Float64, bands::Matrix; plotobj=nothing, label=nothing, color=:black)
+function plot_bands(fc::FitContext, phase::Symbol, fermi_level::Union{Float64,Missing}, bands::Matrix; plotobj=nothing, label=nothing, color=:black)
     @assert phase in [:FCC, :BCC]
     phase = String(phase)
     
@@ -42,15 +42,15 @@ function plot_bands(fc::FitContext, phase::Symbol, fermi_level::Float64, bands::
     end
     for p=1:length(tick_p)
         plot!(plotobj, [tick_p[p]], lw=0.5, c=:gray, seriestype=:vline, label=false)
-    end
-    plot!(plotobj, [fermi_level], lw=0.5, c=:black, ls=:dash, seriestype=:hline, label=false)
+    end    
+    fermi_level !== missing && plot!(plotobj, [fermi_level], lw=0.5, c=:black, ls=:dash, seriestype=:hline, label=false)
     plot!(plotobj; fg_legend=:transparent, bg_legend=:transparent, 
           grid=false, framestyle = :box, legend=:bottomleft)
     xticks!(plotobj, ([t for t in tick_p],[k for k in tick_k]), fontsize=14)
     ylabel!(plotobj, "Energy (eV)")
     
     xlims!(plotobj, 0.0, maximum(x_k))
-    ylims!(plotobj, -20, fermi_level + 10)
+    ylims!(plotobj, -20, 10)
     
     plot(plotobj, dpi=120)
     return plotobj
@@ -96,25 +96,29 @@ function tabulate_results(fc::FitContext)
         end
         fit_params = pot_dict["model"]["fit_params"]
         cutoff_params = pot_dict["model"]["cutoff_params"]
-        row = (param_hash,
-               fit_params["order"],
-               fit_params["degree"],
-               fit_params["env_deg"],
-               cutoff_params["rcut"],
-               cutoff_params["renv"],
-               cutoff_params["pcut"],
-               length(pot_dict["training_datasets"]),
-               pot_dict["size_A"][1],
-               pot_dict["size_A"][2],
-               pot_dict["error_train"],
-               get(pot_dict, "test_error", missing),
-               band_error_FCC,
-               band_error_BCC,
-               pot_file,
-               join(pot_dict["training_datasets"], ","),
-               get(fit_params, "method", "QR"),
-               get(fit_params, "rtol", missing))
-        push!(df, row)
+        try
+            row = (param_hash,
+                fit_params["order"],
+                fit_params["degree"],
+                fit_params["env_deg"],
+                cutoff_params["rcut"],
+                cutoff_params["renv"],
+                cutoff_params["pcut"],
+                length(pot_dict["training_datasets"]),
+                pot_dict["size_A"][1],
+                pot_dict["size_A"][2],
+                pot_dict["error_train"],
+                get(pot_dict, "test_error", missing),
+                band_error_FCC,
+                band_error_BCC,
+                pot_file,
+                join(pot_dict["training_datasets"], ","),
+                get(fit_params, "method", "QR"),
+                get(fit_params, "rtol", missing))
+            push!(df, row)
+        catch
+            @info "skipping $param_hash"
+        end
     end
 
     # add a descriptive label for the types of training configs
