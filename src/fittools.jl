@@ -33,10 +33,10 @@ function make_params(mode::Symbol, training_datasets, test_datasets, onsite_term
         predict = 0
         fit = 0
     else
-        error("mode should be either :fit or :predict")
+        error("mode should be :fit, :predict or :exact")
     end
 
-    if onsite_terms isa String
+    if onsite_terms isa String && isfile(onsite_terms)
         onsite_terms = JSON.parsefile(onsite_terms)
     end
 
@@ -66,7 +66,11 @@ function params_to_string(params::Dict)
     input_dict = Dict{String}{Any}()
     for (k, v) in params
         if k in ["training_datasets", "test_datasets", "model", "onsite-terms"]
-            input_dict[k] = copy(v)
+            if v isa String
+                input_dict[k] = v
+            else
+                input_dict[k] = copy(v)
+            end
         end
     end
     delete!(input_dict["model"], "fit")
@@ -102,7 +106,7 @@ function test_error(test, Bint_table)
     for (i, (R0, Renv, V)) in enumerate(test)
         push!(errors, Bint_table(R0, Renv) - V)
     end
-    return errors
+    return errors, norm(errors)
 end
 
 function fit_model(fc::FitContext, params::Dict, training_datasets, test_datasets, onsite_terms; band_errors=true)
@@ -119,7 +123,7 @@ function fit_model(fc::FitContext, params::Dict, training_datasets, test_dataset
     
         train_dict, Bint_table, cutf_func = do_fit(pot_dict, ["Al"])
         merge!(pot_dict, train_dict)
-        @info "Train error $(train_dict["error_train"])"    
+        @info "Train error |Ac - y| = $(train_dict["error_train"])  RMSE = $(train_dict["error_train_RMSE"])" 
     end
 
     pot_dict["model"]["fit"] = 0 # disable fitting for subsequent runs
@@ -128,10 +132,11 @@ function fit_model(fc::FitContext, params::Dict, training_datasets, test_dataset
         # compute test error on independent set
         test_dataset = pot_dict["test_datasets"]
         test_data = ACEtb.Utils.get_data(test_dataset, cutf_func, get_env)
-        test_error_all = test_error(test_data, Bint_table)
+        test_error_all, test_error_norm = test_error(test_data, Bint_table)
         pot_dict["test_error_all"] = test_error_all
-        pot_dict["test_error"] = norm(test_error_all)
-        @info "Test error $(pot_dict["test_error"])"
+        pot_dict["test_error"] = test_error_norm
+        pot_dict["test_error_RMSE"] = test_error_norm / sqrt(length(test_data))
+        @info "Test error |Ac - y| = $(pot_dict["test_error"]) RMSE = $(pot_dict["test_error_RMSE"])"
     end
 
     # save so we can compute Fermi level; will be overwritten later

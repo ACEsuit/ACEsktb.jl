@@ -163,6 +163,7 @@ function fit_BI(train, specie_syms, order, degree, env_deg, cutfunc;
    train_dict["c"] = c
    train_dict["error_train"] = norm(A*c - y)
    train_dict["error_train_rel"] = train_dict["error_train"] / norm(y)
+   train_dict["error_train_RMSE"] = train_dict["error_train"] / sqrt(size(A, 1))
    train_dict["basis"] = JSON.json(write_dict(basis))
    train_dict["basis_index"] = b_index
    train_dict["nbonds"] = nbonds

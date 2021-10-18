@@ -13,8 +13,11 @@ using ACEtb.Predictions: predict, train_and_predict
 using ACEtb.TBhelpers
 using ProgressMeter
 using Random
+using JSON
+using HDF5
 
 bohr2ang = 0.188972598857892E+01
+hartree2ev = 27.211386024367243
 
 export set_model, model_predict, acetb_greetings
 
@@ -27,7 +30,8 @@ saveh5_SS = nothing
 saveh5_satoms = nothing
 model_onsite_vals = nothing
 
-function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, HH, SS, supercell_atoms; MPIproc=1)
+function buildHS_test(H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, norbs, 
+                      cutoff, cell, HH, SS, supercell_atoms; MPIproc=1, onsite_HS=nothing)
     if(MPIproc == 1)
        Nprg = iend-istart+1
        if isa(stdout, Base.TTY)
@@ -41,6 +45,11 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
     central_atom = prod(mesh) ÷ 2 + 1 # atom 365 for the 9×9×9=729 atom dataset
     rcn = get_tbcells(supercell_atoms, invcell, mesh, central_atom)
 
+    if onsite_HS !== nothing 
+       atoms = set_JuLIP_atoms(acetb_dct["elm_names"], natoms, coords, species, cell)
+       onsite_HS = onsite_HS(atoms)
+    end
+
     for ia = istart:iend
        isp = species[ia]
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
@@ -51,8 +60,14 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
        cid = find_row_in_matrix(shift, rcn)
       #  @show HH[cid,:,:]
       #  @show SS[cid,:,:]
-       H[io : io + nno - 1] = vcat(HH[cid,:,:]...)
-       S[io : io + nno - 1] = vcat(SS[cid,:,:]...)
+       if onsite_HS !== nothing
+          os_H, os_S = onsite_HS(ia)
+          H[io : io + nno - 1] = os_H
+          S[io : io + nno - 1] = os_S   
+       else 
+          H[io : io + nno - 1] = vcat(HH[cid,:,:]...) / hartree2ev
+          S[io : io + nno - 1] = vcat(SS[cid,:,:]...) / hartree2ev
+       end
 
        # Offsite blocks
        for nj = 1:nnei[ia]
@@ -82,8 +97,8 @@ function buildHS_test(SKH_list, H, S, istart, iend, natoms, coords, species, nne
     end
 end
 
-function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, inei, ipair, i2a, norbs, 
-                 onsite_H, onsite_S, Bondint_table, cutoff_func, cutoff; MPIproc=1)
+function buildHS(SKH_list, H, S, istart, iend, natoms, coords, cell, species, nnei, inei, ipair, i2a, norbs, 
+                 onsite_HS, Bondint_table, cutoff_func, cutoff; MPIproc=1)
 
     WriteAllow = false
     if(MPIproc == 1)
@@ -97,10 +112,13 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
                             barlen=20)
        end
     end
+
+    atoms = set_JuLIP_atoms(acetb_dct["elm_names"], natoms, coords, species, cell)
+    onsite_HS = onsite_HS(atoms)
   
     Threads.@threads for ia = istart:iend
        isp = species[ia]
-       @show ia, isp
+      #  @show ia, isp
        offset = ia == 1 ? 0 : sum(nnei[1:ia-1])
 
        # Onsite blocks
@@ -113,8 +131,10 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
       #  end
        io = ipair[offset + ia] + 1
        nno = norbs[isp] * norbs[isp]
-       H[io : io + nno - 1] = onsite_H[isp]
-       S[io : io + nno - 1] = onsite_S[isp]
+       os_H, os_S = onsite_HS(ia)
+      #  @show os_H, os_S
+       H[io : io + nno - 1] = os_H
+       S[io : io + nno - 1] = os_S
 
        # Offsite blocks
        lnb = length(SKH_list[isp].bonds)
@@ -136,9 +156,9 @@ function buildHS(SKH_list, H, S, istart, iend, natoms, coords, species, nnei, in
 
           # Set H and S
           E  = sk2cart(SKH_list[isp], R0, VV[1:lnb], WriteAllow=WriteAllow)
-          H[ix : iy] = vcat(E...)
+          H[ix : iy] = vcat(E...) / hartree2ev # FIXME add units to metadata
           ES = sk2cart(SKH_list[isp], R0, VV[lnb+1:end], WriteAllow=WriteAllow)
-          S[ix : iy] = vcat(ES...)
+          S[ix : iy] = vcat(ES...) / hartree2ev # FIXME add units to metadata
        end
        if(MPIproc == 1)
           if isa(stdout, Base.TTY)
@@ -442,6 +462,29 @@ function set_model(natoms, nspecies,
     flush(stdout)
 end
 
+function ACE2tb_wrapper_predict_HS(model_ID, atoms; λ=1e-3)
+   @show model_ID
+
+   dict_atoms = JuLIP.write_dict(atoms)
+   open("structure.json", "w") do f
+      write(f, JSON.json(dict_atoms))
+   end   
+
+   cmd = setenv(`$(joinpath(Sys.BINDIR, Base.julia_exename())) --project=$(homedir())/.julia/dev/ACE2tb compute.jl $(model_ID) $(pwd())/structure.json $(pwd())/onsite_HS.h5`,
+                dir="$(homedir())/.julia/dev/ACE2tb/test")
+   @show cmd
+   run(cmd)
+
+   H, S = h5open("onsite_HS.h5") do f
+      read(f, "H"), read(f, "S")
+   end
+
+   println("Regularisation λ = $λ")
+
+   return ia -> (reshape(H[:, :, ia], :), 
+                 reshape(S[:, :, ia] + λ * I, :))
+end
+
 function model_predict(iatf, iatl, natoms, 
                        coords::Array{Float64},
                        latvecs::Array{Float64},
@@ -471,34 +514,36 @@ function model_predict(iatf, iatl, natoms,
 
         predict_params = filedata["model"]["predict"]
         onsite_vals = filedata["onsite-terms"]
-        onsite_terms = [onsite_vals[elm_names[species[a]]] for a=1:natoms]
-
         norbe = acetb_dct["norbe"]
-        onsite_H = Dict{Int}{Vector{Float64}}()
-        onsite_S = Dict{Int}{Vector{Float64}}()
-        for isp = 1:nspecies
-            sp = elm_names[species[isp]]
-            if onsite_vals[sp] isa AbstractVector
-               MPIproc == 1 && @info "│    Using $(norbe[isp]) element diagonal onsite approximation for species $sp"
-               @assert length(onsite_vals[sp]) == norbe[isp]
-               onsite_H[isp] = reshape(diagm(Float64.(onsite_vals[sp])), :)
-               onsite_S[isp] = reshape(1.0*I(norbe[isp]) |> Matrix, :)
-            elseif onsite_vals[sp] isa AbstractDict
-               MPIproc == 1 && @info "│    Using $(norbe[isp]) × $(norbe[isp]) onsite block for species $sp"
-               onsite_H[isp] = vcat(onsite_vals[sp]["H"]...)
-               onsite_S[isp] = vcat(onsite_vals[sp]["S"]...)
-            else
-               error("Invalid onsite specification for species $sp: $(onsite_vals[sp])")
+
+        if onsite_vals isa AbstractDict
+            for isp = 1:nspecies
+                sp = elm_names[species[isp]]
+                if onsite_vals[sp] isa AbstractVector
+                   MPIproc == 1 && @info "│    Using $(norbe[isp]) element diagonal onsite approximation for species $sp"
+                   @assert length(onsite_vals[sp]) == norbe[isp]
+                   onsite_HS = coords -> (ia -> (reshape(diagm(Float64.(onsite_vals[sp])), :), reshape(1.0*I(norbe[isp]) |> Matrix, :)))
+                elseif onsite_vals[sp] isa AbstractDict
+                   MPIproc == 1 && @info "│    Using $(norbe[isp]) × $(norbe[isp]) onsite block for species $sp"
+                   onsite_HS = coords -> (ia -> (vcat(onsite_vals[sp]["H"]...), vcat(onsite_vals[sp]["S"]...)))
+                else
+                   error("Invalid onsite specification for species $sp: $(onsite_vals[sp])")
+                end
             end
+        elseif onsite_vals isa AbstractString
+           onsite_HS = coords -> ACE2tb_wrapper_predict_HS(onsite_vals, coords)
+        else
+           error("Invalid onsite specification $(onsite_vals)")
         end
 
         MPIproc == 1 && @info "│    Calculating bond integrals..."
         if predict_params == 0
-           buildHS_test(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff, cell, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc)
+           buildHS_test(H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, norbe, 
+                        cutoff, cell, saveh5_HH, saveh5_SS, saveh5_satoms; MPIproc=MPIproc, onsite_HS=onsite_HS)
         elseif predict_params == -1
            buildHS_dftb_neigh(SKH_list, H, S, iatf, iatl, norbe, onsite_terms, Bondint_table, cutoff_func, cutoff; MPIproc=1)
         else
-           buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, species, nneigh, ineigh, ipair, i2a, norbe, onsite_H, onsite_S, 
+           buildHS(SKH_list, H, S, iatf, iatl, natoms, pos, cell, species, nneigh, ineigh, ipair, i2a, norbe, onsite_HS, 
                    Bondint_table, cutoff_func, cutoff; MPIproc=MPIproc)
         end
         stat_jl[1] = 0
