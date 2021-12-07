@@ -21,8 +21,10 @@ where $g$ is an ACE function, i.e. satisfies rotation invariance. Here $R_{ij}$ 
 
 ## Citation
 
- ...
+http://arxiv.org/abs/2111.13736
+
+> Zhang, L., B. Onat, G. Dusson, G. Anand, R. J. Maurer, C. Ortner, and J. R. Kermode, 2021, Equivariant analytical mapping of first principles Hamiltonians to accurate and transferable materials models: ArXiv:2111.13736 [Cond-Mat].
 
 ## License
 
- ...
+MIT
