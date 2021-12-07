@@ -6,5 +6,5 @@
 
 ```
 ] registry add https://github.com/JuliaMolSim/MolSim.git
-] add ACEtb
+] add ACEsktb
 ```
